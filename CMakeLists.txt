@@ -9,10 +9,77 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_subdirectory(ThreadPool)
+# CMAKE 配置参考了很多 ZLToolKit 的写法 
 
-file(GLOB srcs main.cpp)
+#设置库文件路径
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+#设置可执行程序路径
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+#设置子目录
+set(SUB_DIR_LIST "Thread")
+foreach(SUB_DIR ${SUB_DIR_LIST})
+    # 遍历源文件
+    aux_source_directory(src/${SUB_DIR} SRC_LIST)
+    # 安装头文件至系统目录
+    # install(DIRECTORY src/${SUB_DIR} DESTINATION ${INSTALL_PATH_INCLUDE} FILES_MATCHING PATTERN "*.h")
+endforeach()
 
-add_executable(main ${srcs})
 
-target_link_libraries(main PUBLIC ThreadPool)
+set(LINK_LIB_LIST)
+find_package(Threads REQUIRED)
+# set(ENABLE_OPENSSL ON CACHE BOOL "enable openssl")
+# set(ENABLE_MYSQL ON CACHE BOOL "enable mysql")
+
+
+#查找openssl是否安装
+# find_package(OpenSSL QUIET)
+# if(OPENSSL_FOUND AND ENABLE_OPENSSL)
+#     message(STATUS "找到openssl库:\"${OPENSSL_INCLUDE_DIR}\",ENABLE_OPENSSL宏已打开")
+#     include_directories(${OPENSSL_INCLUDE_DIR})
+#     add_definitions(-DENABLE_OPENSSL)
+#     list(APPEND  LINK_LIB_LIST ${OPENSSL_LIBRARIES})
+# endif()
+
+#查找mysql是否安装
+# find_package(MYSQL QUIET)
+# if(MYSQL_FOUND AND ENABLE_MYSQL)
+#     message(STATUS "找到mysqlclient库:\"${MYSQL_INCLUDE_DIR}\",ENABLE_MYSQL宏已打开")
+#     include_directories(${MYSQL_INCLUDE_DIR})
+#     include_directories(${MYSQL_INCLUDE_DIR}/mysql)
+#     add_definitions(-DENABLE_MYSQL)
+#     list(APPEND  LINK_LIB_LIST ${MYSQL_LIBRARIES})
+# endif()
+
+# 设置子模块的安装目录
+# set(INSTALL_PATH_LIB lib)
+# set(INSTALL_PATH_INCLUDE include)
+
+#添加子模块
+# foreach(SUB_DIR ${SUB_DIR_LIST})
+#     aux_source_directory(${SUB_DIR} SRC_LIST)
+#     #安装头文件至系统目录
+#     install(DIRECTORY src/${SUB_DIR} DESTINATION ${INSTALL_PATH_INCLUDE} FILES_MATCHING PATTERN "*.h")
+# endforeach()
+
+message(STATUS "Linking dependencies : ${LINK_LIB_LIST}")
+
+# 编译动态库
+add_library(${PROJECT_NAME}_shared SHARED ${SRC_LIST})
+target_include_directories(${PROJECT_NAME}_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(${PROJECT_NAME}_shared)
+# set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
+# install(TARGETS ${PROJECT_NAME}_shared  ARCHIVE DESTINATION ${INSTALL_PATH_LIB} LIBRARY DESTINATION ${INSTALL_PATH_LIB})
+
+#编译静态库
+add_library(${PROJECT_NAME}_static STATIC ${SRC_LIST})
+#引用头文件路径
+target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# set_target_properties(${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
+# #安装静态库至系统目录
+# install(TARGETS ${PROJECT_NAME}_static ARCHIVE DESTINATION ${INSTALL_PATH_LIB})
+
+# 测试程序
+add_subdirectory(tests)
+
+file(GLOB sources main.cpp)
+add_executable(main ${sources})
