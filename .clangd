@@ -1,0 +1,24 @@
+CompileFlags:                             
+    Add: 
+      [
+        -std=c++17,
+        -Wno-documentation,
+        -Wno-missing-prototypes,
+      ]
+    # Compiler: clang++
+Diagnostics:
+  ClangTidy:
+    Add:
+    [
+        performance-*,
+        bugprone-*,
+        modernize-*,
+        clang-analyzer-*,
+        # readability-identifier*,
+    ]
+    Remove:
+      [
+        modernize-use-trailing-return-type
+      ]
+    CheckOptions:
+      readability-identifier-naming.VariableCase: camelCase
