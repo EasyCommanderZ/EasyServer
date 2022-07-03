@@ -1,0 +1,8 @@
+#ifndef __SRC_THREADPOOL_THREADPOOL_H_
+#define __SRC_THREADPOOL_THREADPOOL_H_
+
+class ThreadPool {
+
+};
+
+#endif /* __SRC_THREADPOOL_THREADPOOL_H_ */
