@@ -29,6 +29,11 @@ public:
         m_arr.emplace(std::move(val));
         m_cv.notify_one();
     }
+
+    size_t size() const {
+        std::unique_lock lck(m_mtx);
+        return m_arr.size();
+    }
 };
 
 #endif /* __SRC_THREADPOOL_MTQUEUE_H_ */

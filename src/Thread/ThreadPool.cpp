@@ -1,4 +1,5 @@
 #include "ThreadPool.h"
+#include "Thread/threadGroup.h"
 #include <cstddef>
 #include <functional>
 #include <thread>
@@ -6,7 +7,6 @@
 using task_t = std::function<void()>;
 
 void ThreadPool::InitializeWorkers(size_t workers_num) {
-    // 设置一个线程的默认值
     for (size_t i = 0; i < workers_num; i++) {
         std::thread t([&]() {
             while (this->_running) {
