@@ -8,6 +8,8 @@
 #include <sys/_types/_size_t.h>
 #include <thread>
 
+const int MAX_THREADS = 1024;
+
 class ThreadPool {
 public:
     using task_t = std::function<void()>;

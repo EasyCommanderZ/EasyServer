@@ -19,6 +19,7 @@ void ThreadPool::InitializeWorkers(size_t workers_num) {
 }
 
 ThreadPool::ThreadPool(size_t workers_num) {
+    if(workers_num > MAX_THREADS) workers_num = MAX_THREADS;
     InitializeWorkers(workers_num);
 }
 
