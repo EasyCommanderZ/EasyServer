@@ -2,6 +2,7 @@
 #include "Thread/threadGroup.h"
 #include <cstddef>
 #include <functional>
+#include <stdexcept>
 #include <thread>
 
 using task_t = std::function<void()>;
@@ -33,6 +34,13 @@ void ThreadPool::stop() {
     for (auto &w : _workers) {
         w.join();
     }
+}
+
+void ThreadPool::addTask(task_t t) {
+    if(not this -> _running) {
+        throw std::runtime_error("Thread pool addTask error : thread pool already stopped.");
+    }
+    this -> _task_queue.push_back(std::move(t));
 }
 
 ThreadPool::~ThreadPool() {
