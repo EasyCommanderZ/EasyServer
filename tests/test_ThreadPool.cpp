@@ -19,7 +19,7 @@ int main() {
     std::unordered_map<std::thread::id, int> cnt;
     std::mutex mtx;
     tp start_time = std::chrono::system_clock::now();
-    for (int i = 0; i < 200000; i++) {
+    for (int i = 0; i < 20000; i++) {
         tpool.addTask([&] {
             std::unique_lock lck(mtx);
             cnt[std::this_thread::get_id()] ++;

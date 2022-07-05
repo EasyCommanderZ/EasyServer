@@ -79,6 +79,8 @@ target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_CURRENT_SOURCE_
 # install(TARGETS ${PROJECT_NAME}_static ARCHIVE DESTINATION ${INSTALL_PATH_LIB})
 
 # 测试程序
+include(CTest)
+enable_testing()
 add_subdirectory(tests)
 
 file(GLOB sources main.cpp)
