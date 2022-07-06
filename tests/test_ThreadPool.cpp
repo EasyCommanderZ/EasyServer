@@ -21,12 +21,12 @@ int main() {
     tp start_time = std::chrono::system_clock::now();
     for (int i = 0; i < 20000; i++) {
         tpool.addTask([&] {
-            std::unique_lock lck(mtx);
+            std::unique_lock<std::mutex> lck(mtx);
             cnt[std::this_thread::get_id()] ++;
             // cout << i << " ";
         });
     }
-    // tpool.stop();
+    tpool.stop();
     tp end_time = std::chrono::system_clock::now();
     td duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     int total = 0;
