@@ -26,7 +26,7 @@ void NormalFileWriter::append(const char *msg, size_t len) {
     while (written != len) {
         size_t remain = len - written;
         size_t cur = std::fwrite(msg + written, 1, remain, _fp);
-        // note : MacOS 上没有 fwrite_unlocked 方法。两者的区别是 _unlocked 版本是线程不安全的，但是效率会更高一些。
+        // note : MacOS 上没有 fwrite_unlocked 方法。两者的区别是 _unlocked 版本是线程不安全的，但是效率会更高一些。但是在ZLToolKit中，日志库的写入使用的是fwrite
         // size_t cur = ::fwrite_unlocked(msg + written, 1, remain, _fp);
         if (cur != remain) {
             int err = ferror(_fp);
