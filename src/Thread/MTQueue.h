@@ -30,7 +30,7 @@ public:
         m_cv.notify_one();
     }
 
-    size_t size() const {
+    size_t size() {
         std::unique_lock<std::mutex> lck(m_mtx);
         return m_arr.size();
     }

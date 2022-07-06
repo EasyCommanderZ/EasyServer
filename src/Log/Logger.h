@@ -110,7 +110,7 @@ private:
 
 #define LOG_DEBUG(fmt, args...)                                             \
     do {                                                                    \
-        if (Logger::getLogLevel() <= LogConfig::DEBUG) {                       \
+        if (Logger::getLogLevel() <= LogConfig::LogLevel::DEBUG) {                       \
             Logger::getInstance()->append(                                  \
                 getStr_(__FILE__), getStrLen_(__FILE__), strify_(__LINE__), \
                 getStrLen_(strify_(__LINE__)), fmt, LogConfig::DEBUG, args);   \
