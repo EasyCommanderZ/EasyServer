@@ -24,7 +24,7 @@ thread_local Logger::Buffer buffer;
 Logger *Logger::getInstance() {
     // 双锁实现单例模式
     if (_logger == nullptr) {
-        std::unique_lock lck(_mtx);
+        std::unique_lock<std::mutex> lck(_mtx);
         if (_logger == nullptr) {
             _logger = new Logger;
         }

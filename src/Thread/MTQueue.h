@@ -17,7 +17,7 @@ class MTQueue {
 
 public:
     T pop() {
-        std::unique_lock lck(m_mtx);
+        std::unique_lock<std::mutex> lck(m_mtx);
         m_cv.wait(lck, [this] { return !m_arr.empty(); });
         T ret = std::move(m_arr.front());
         m_arr.pop();
@@ -25,13 +25,13 @@ public:
     }
 
     void push_back(T val) {
-        std::unique_lock lck(m_mtx);
+        std::unique_lock<std::mutex> lck(m_mtx);
         m_arr.emplace(std::move(val));
         m_cv.notify_one();
     }
 
     size_t size() const {
-        std::unique_lock lck(m_mtx);
+        std::unique_lock<std::mutex> lck(m_mtx);
         return m_arr.size();
     }
 };

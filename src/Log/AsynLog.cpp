@@ -35,7 +35,7 @@ AsynLog::BufferNodePtr AsynLog::newBufferNode() {
 }
 
 void AsynLog::append(const char *msg, size_t len, size_t keyLen) {
-    std::unique_lock lck(_mtx);
+    std::unique_lock<std::mutex> lck(_mtx);
     std::unique_ptr<Buffer> &curBuff = curBuffNode->_buff;
 
     if (curBuff->avail() > len) {
@@ -110,7 +110,7 @@ void AsynLog::threadFunc() {
     while (_started) {
         // RAII lock block
         {
-            std::unique_lock lck(_mtx);
+            std::unique_lock<std::mutex> lck(_mtx);
             // 如果写的太慢会被 flushInterval 间隔唤醒后进行 flush 操作
             // 不能用 while 循环判断缓冲区是否为空，如果缓冲区一直为空，会导致死锁
             if (writeBufferNode.empty()) {
@@ -144,7 +144,7 @@ void AsynLog::threadFunc() {
 
         {
             // 归还 bufferNode 到环形缓冲区
-            std::unique_lock lck(_mtx);
+            std::unique_lock<std::mutex> lck(_mtx);
             for(auto& node : writeBufferNode) {
                 node -> _buff -> clear();
                 addToTail(node);
