@@ -1,11 +1,12 @@
 #include "Log/LogFile.h"
 #include "Log/FileWriter.h"
-#include "Util/ThreadInfo.h"
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
 #include <string>
+#include <sstream>
+#include <thread>
 #include <unistd.h> /* gethostname */
 
 LogFile::LogFile(const std::string &basename, std::size_t rollSize, FileWriterType fileWriterType) :
@@ -48,7 +49,12 @@ std::string LogFile::getLogFileName(const std::string &basename) {
     filename += timeStr;
 
     filename += getHostName();
-    filename += '.' + ThreadInfo::getPidStr();
+
+    auto currentTID = std::this_thread::get_id();
+    std::ostringstream ss;
+    ss << currentTID;
+
+    filename += '.' + ss.str();
 
     filename += ".log";
     return filename;

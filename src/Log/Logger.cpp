@@ -2,13 +2,18 @@
 #include "Log/LogBuffer.h"
 #include "Log/LogConfig.h"
 #include "Log/SynLog.h"
-#include "Util/ThreadInfo.h"
+// #include "Util/ThreadInfo.h"
 #include "Util/Timestamp.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <mutex>
+#include <ostream>
+#include <sstream>
+#include <thread>
+
+LogConfig dLogConfig;
 
 // 单例变量定义
 Logger *Logger::_logger = nullptr;
@@ -103,15 +108,24 @@ void Logger::append(const char *file, size_t fileLen, const char *line, size_t l
 
     // 线程信息
     buffer.append("tid:", 4);
-    buffer.append(ThreadInfo::getTidStr().c_str(), ThreadInfo::getTidStrlen());
+    // buffer.append(ThreadInfo::getTidStr().c_str(), ThreadInfo::getTidStrlen());
+
+    auto currentTID = std::this_thread::get_id();
+    std::ostringstream ss;
+    ss << currentTID;
+
+    std::string tidStr = ss.str();
+    size_t tidStrLen = static_cast<size_t>(tidStr.size());
+    buffer.append(ss.str().c_str(), tidStrLen);
 
     // sourcefile [line:NUM] - LogLevel : text
+    buffer.append(" ", 1);
     buffer.append(file, fileLen);
     buffer.append("[Line:", 6);
     buffer.append(line, lineLen);
-    buffer.append("] - ", 4);
+    buffer.append("] - [", 5);
     buffer.append(LogLevelStr[level], 5);
-    buffer.append(": ", 2);
+    buffer.append("]: ", 3);
 
     // size_t keyLen = buffer.size();
     /* 正文, 使用va_list、va_arg和va_end等宏来处理, 其原理是
@@ -122,13 +136,16 @@ void Logger::append(const char *file, size_t fileLen, const char *line, size_t l
     va_end(argPtr);
     buffer.addLen(static_cast<size_t>(n));
 
-    /* appen到outPutfunc */
+    /* append到 outPutfunc */
     /* used for BenchMark*/
+    if(global_outputFunc == nullptr) {
+        buffer.clear(); return ;
+    } // for Log generation test;
     size_t keyLen = buffer.size();
     global_outputFunc(buffer.data(), buffer.size(), keyLen);
     assert(buffer.size() < static_cast<size_t>(LogBuffer::lineBufferSize));
     buffer.clear();
-    if(level == LogConfig::LogLevel::FATAL) {
+    if (level == LogConfig::LogLevel::FATAL) {
         global_flushFunc();
         abort();
     }

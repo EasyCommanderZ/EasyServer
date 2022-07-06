@@ -8,8 +8,8 @@
 namespace LogBuffer {
 // 使用命名空间，可以实现不同种类的缓存类型
 
-// 日志记录行缓冲区大小 1Kb
-const int lineBufferSize = 1024;
+// 日志记录行缓冲区大小 4Kb
+const int lineBufferSize = 4 * 1024;
 
 // 异步日单个缓冲区大小：4Mb
 const int BufferSize = 4 * 1024 * 1024;

@@ -7,7 +7,7 @@
 // 构造函数根据文件名新建位于当前路径的文件
 NormalFileWriter::NormalFileWriter(const std::string &filename) {
     // FILE MODE : WE
-    _fp = ::fopen(filename.c_str(), "a+");
+    _fp = ::fopen(filename.c_str(), "ae");
     if (_fp == nullptr) {
         perror("FileWriter - NormalFileWriter open file failed : ");
         int err = ferror(_fp);
