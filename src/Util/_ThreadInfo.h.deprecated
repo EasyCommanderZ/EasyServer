@@ -9,9 +9,9 @@
 #include <unistd.h>
 
 namespace ThreadInfo {
-    extern thread_local std::thread::id currentTID;
-    extern thread_local std::string tidStr;
-    extern thread_local size_t tidStrlen;
+    std::thread::id currentTID;
+    std::string tidStr;
+    size_t tidStrlen;
 
     std::thread::id getTid() {
         if(currentTID != std::this_thread::get_id()) {
