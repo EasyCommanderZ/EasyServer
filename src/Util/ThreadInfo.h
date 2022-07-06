@@ -1,12 +1,10 @@
 #ifndef __SRC_UTIL_THREADINFO_H_
 #define __SRC_UTIL_THREADINFO_H_
 #include "Util/noncopyable.h"
-#include <arm/types.h>
 #include <cstddef>
 #include <cstdio>
 #include <sstream>
 #include <string>
-#include <sys/_types/_pid_t.h>
 #include <thread>
 #include <unistd.h>
 

@@ -5,7 +5,6 @@
 #include "Thread/threadGroup.h"
 #include <atomic>
 #include <functional>
-#include <sys/_types/_size_t.h>
 #include <thread>
 
 const int MAX_THREADS = 1024;
