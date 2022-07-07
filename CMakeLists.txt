@@ -10,21 +10,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 if(NOT APPLE)
+    set(CMAKE_CXX_COMPILER "g++")
     set(CXX_FLAGS
     -g
-    -DCHECK_PTHREAD_RETURN_VALUE
-    -D_FILE_OFFSET_BITS=64
     -Wall
-    -Wextra
-    -Wconversion
+    -fPIC
+    -std=c++17
+    -pthread
     -Wno-unused-parameter
-    -Wold-style-cast
-    -Woverloaded-virtual
-    -Wpointer-arith
-    -Wshadow
-    -Wwrite-strings
-    -march=native
-    -rdynamic
     )
 
     string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
