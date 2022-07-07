@@ -9,8 +9,26 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall --std=c++17 -O3 -fPIC" )
-set( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -O3 -fPIC" )
+if(NOT APPLE)
+    set(CXX_FLAGS
+    -g
+    -DCHECK_PTHREAD_RETURN_VALUE
+    -D_FILE_OFFSET_BITS=64
+    -Wall
+    -Wextra
+    -Wconversion
+    -Wno-unused-parameter
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wpointer-arith
+    -Wshadow
+    -Wwrite-strings
+    -march=native
+    -rdynamic
+    )
+
+    string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
+endif()
 
 # CMAKE 配置参考了很多 ZLToolKit 的写法 
 
