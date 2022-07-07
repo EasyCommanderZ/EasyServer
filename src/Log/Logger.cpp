@@ -12,6 +12,9 @@
 #include <ostream>
 #include <sstream>
 #include <thread>
+#if defined(__linux__) || defined(__linux)
+#include <cstdarg>
+#endif //__linux__
 
 LogConfig dLogConfig;
 
