@@ -22,17 +22,15 @@ if(NOT APPLE)
     -Wno-varargs
     -Wno-reorder
     )
-
-    string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 else()
     set(CXX_FLAGS
     -Wno-unused-parameter
     -Wno-varargs
     -Wno-reorder
     )
-
-    string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 endif()
+
+string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
 # CMAKE 配置参考了很多 ZLToolKit 的写法 
 
