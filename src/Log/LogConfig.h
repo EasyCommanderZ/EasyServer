@@ -23,7 +23,7 @@ public:
     struct LogFileOptions {
         std::string baseName = "MUST_NOT_NULL";
         // 日志滚动大小和 flush 间隔，用于AsynLog
-        size_t rollSize = 4 * 1024 * 1024; // default 4Mb
+        size_t rollSize = static_cast<size_t>(50 * 1024 * 1024); // default 50Mb
         int flushInterval = 3;
         int bufferNums = 4; // 默认buffer个数
         int maxBuffToWrite = 16;

@@ -32,7 +32,7 @@ std::string getHostName() {
         buff[sizeof buff - 1] = '\0';
         return buff;
     } else {
-        return "UNKNOWN HOST";
+        return "UNKNOWN.HOST";
     }
 }
 

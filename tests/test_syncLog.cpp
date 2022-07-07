@@ -12,7 +12,7 @@
 #include <sstream>
 #include <string>
 
-const int NN = 1e3;
+const int NN = 1e5;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {
@@ -37,13 +37,12 @@ void synOutput(const char *msg, size_t len, size_t keyLen = 0) {
 void SynLogger() {
     LogConfig config;
     config.logLevel = LogConfig::TRACE;
-    config.logFileOptions.baseName = "test_sync-Synlog";
+    config.logFileOptions.baseName = "test-Synlog";
     config.logFileOptions.fileWriterType = FileWriterType::FileWriter_NORMAL;
-    // 日志大小设置为 100 M；
-    config.logFileOptions.rollSize = static_cast<size_t>(100 * 1024 * 1024);
+    // 单个日志文件大小上限设置为 500 M；
+    config.logFileOptions.rollSize = static_cast<size_t>(500 * 1024 * 1024);
     Logger::setConfig(config);
     synLog = std::make_unique<SynLog>();
-
     Logger::setOutputFunc(synOutput);
 }
 
