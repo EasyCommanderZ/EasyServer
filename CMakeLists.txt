@@ -9,6 +9,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# 在linux上指定 g++ 为编译器，通过设置编译选项解决一些编译问题，并忽略一些编译警告
 if(NOT APPLE)
     set(CMAKE_CXX_COMPILER "g++")
     set(CXX_FLAGS
@@ -18,6 +19,16 @@ if(NOT APPLE)
     -std=c++17
     -pthread
     -Wno-unused-parameter
+    -Wno-varargs
+    -Wno-reorder
+    )
+
+    string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
+else()
+    set(CXX_FLAGS
+    -Wno-unused-parameter
+    -Wno-varargs
+    -Wno-reorder
     )
 
     string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
