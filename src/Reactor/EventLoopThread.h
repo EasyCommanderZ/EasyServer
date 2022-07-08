@@ -1,0 +1,8 @@
+#ifndef __SRC_POLLER_EVENTLOOPTHREAD_H_
+#define __SRC_POLLER_EVENTLOOPTHREAD_H_
+
+class EventLoopThread {
+
+};
+
+#endif /* __SRC_POLLER_EVENTLOOPTHREAD_H_ */
