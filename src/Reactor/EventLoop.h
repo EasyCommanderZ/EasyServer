@@ -1,5 +1,5 @@
-#ifndef __SRC_POLLER_EVENTLOOP_H_
-#define __SRC_POLLER_EVENTLOOP_H_
+#ifndef __SRC_REACTOR_EVENTLOOP_H_
+#define __SRC_REACTOR_EVENTLOOP_H_
 
 #include "Poller.h"
 #include <cassert>
@@ -60,4 +60,4 @@ private:
     void handleConn();
 };
 
-#endif /* __SRC_POLLER_EVENTLOOP_H_ */
+#endif /* __SRC_REACTOR_EVENTLOOP_H_ */

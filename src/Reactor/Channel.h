@@ -1,7 +1,7 @@
-#ifndef __SRC_POLLER_CHANNEL_H_
-#define __SRC_POLLER_CHANNEL_H_
+#ifndef __SRC_REACTOR_CHANNEL_H_
+#define __SRC_REACTOR_CHANNEL_H_
 
-#include "Reactor/HttpData.h"
+#include "Http/HttpData.h"
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -45,6 +45,10 @@ public:
     ~Channel();
     int getFd();
     void setFd(int fd);
+
+    EventLoop* getLoop() {
+        return _loop;
+    }
 
     void setHolder(std::shared_ptr<HttpData> holder) {
         _holder = holder;
@@ -119,4 +123,4 @@ public:
     }
 
 };
-#endif /* __SRC_POLLER_CHANNEL_H_ */
+#endif /* __SRC_REACTOR_CHANNEL_H_ */

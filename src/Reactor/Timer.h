@@ -1,7 +1,7 @@
 #ifndef __SRC_POLLER_TIMER_H_
 #define __SRC_POLLER_TIMER_H_
 
-#include "Reactor/HttpData.h"
+#include "Http/HttpData.h"
 #include <cstddef>
 #include <deque>
 #include <memory>
@@ -17,7 +17,7 @@ public:
     ~TimerNode();
     TimerNode(TimerNode &tn);
     void update(int timeout);
-    void isValid();
+    bool isValid();
     void clearReq();
     void setDeleted() {
         _deleted = true;
@@ -39,7 +39,7 @@ struct TimerCmp {
 class TimerManager {
 private:
     using SPTimerNode = std::shared_ptr<TimerNode>;
-    std::priority_queue<SPTimerNode, std::deque<SPTimerNode>, TimerCmp> timerQueue;
+    std::priority_queue<SPTimerNode, std::deque<SPTimerNode>, TimerCmp> _timerQueue;
 
 public:
     TimerManager();

@@ -1,5 +1,5 @@
-#ifndef __SRC_POLLER_POLLER_H_
-#define __SRC_POLLER_POLLER_H_
+#ifndef __SRC_REACTOR_POLLER_H_
+#define __SRC_REACTOR_POLLER_H_
 
 #if defined (__linux__) || defined (__linux)
 #include <sys/epoll.h>
@@ -12,7 +12,7 @@
 #include <memory>
 #include <vector>
 #include "Channel.h"
-#include "HttpData.h"
+#include "Http/HttpData.h"
 #include "Timer.h"
 class Poller {
 public:
@@ -41,4 +41,4 @@ private:
 #endif
 };
 
-#endif /* __SRC_POLLER_POLLER_H_ */
+#endif /* __SRC_REACTOR_POLLER_H_ */
