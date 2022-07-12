@@ -39,7 +39,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #设置可执行程序路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 #设置子目录
-set(SUB_DIR_LIST "Thread" "Log" "Util" "Reactor" "Http")
+set(SUB_DIR_LIST "Thread" "Log" "Util" "Reactor" "Http" "Server")
 foreach(SUB_DIR ${SUB_DIR_LIST})
     # 遍历源文件
     aux_source_directory(src/${SUB_DIR} SRC_LIST)
@@ -106,5 +106,6 @@ include(CTest)
 enable_testing()
 add_subdirectory(tests)
 
-file(GLOB sources main.cpp)
+file(GLOB sources src/main.cpp)
 add_executable(main ${sources})
+target_link_libraries(main PUBLIC ${PROJECT_NAME}_shared)

@@ -58,9 +58,13 @@ void Server::handleNewConn() {
 
         std::shared_ptr<Channel> req_channel(new Channel(loop, accept_fd));
         std::shared_ptr<HttpData> req_info(new HttpData(req_channel, accept_fd));
-        loop -> queueInLoop([req_info] { req_info->newEvent(); });
-        HttpData::userCount ++;
+        loop->queueInLoop([req_info] { req_info->newEvent(); });
+        HttpData::userCount++;
         LOG_INFO("New Connection from %s : %d, userCount : [%d]", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), static_cast<int>(HttpData::userCount));
     }
-    _acceptChannel -> setEvents(EPOLLIN | EPOLLET);
+    _acceptChannel->setEvents(EPOLLIN | EPOLLET);
+}
+
+void Server::handleConn() {
+    _mainLoop->updatePoller(_acceptChannel);
 }
