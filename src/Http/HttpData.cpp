@@ -31,6 +31,7 @@ HttpData::HttpData(SP_Channel channel, int connfd) :
     _channel(channel), _fd(connfd), _isClose(false), _connectionState(H_CONNECTED) {
     userCount ++;
     _loop = _channel->getLoop();
+    _channel -> setHolder(std::shared_ptr<HttpData>(shared_from_this()));
     _channel->setReadHandler([this] { handleRead(); });
     _channel->setWriteHandle([this] { handleWrite(); });
     _channel->setConnHandler([this] { handleConn(); });
