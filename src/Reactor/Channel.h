@@ -1,7 +1,7 @@
 #ifndef __SRC_REACTOR_CHANNEL_H_
 #define __SRC_REACTOR_CHANNEL_H_
 
-#include "Http/HttpData.h"
+#include "../Http/HttpData.h"
 #include <atomic>
 #include <cstdint>
 #include <functional>

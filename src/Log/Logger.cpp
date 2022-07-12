@@ -1,9 +1,9 @@
-#include "Log/Logger.h"
-#include "Log/LogBuffer.h"
-#include "Log/LogConfig.h"
-#include "Log/SynLog.h"
+#include "Logger.h"
+#include "LogBuffer.h"
+#include "LogConfig.h"
+#include "SynLog.h"
 // #include "Util/ThreadInfo.h"
-#include "Util/Timestamp.h"
+#include "../Util/Timestamp.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>

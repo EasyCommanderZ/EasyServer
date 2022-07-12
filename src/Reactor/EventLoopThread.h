@@ -1,7 +1,7 @@
 #ifndef __SRC_POLLER_EVENTLOOPTHREAD_H_
 #define __SRC_POLLER_EVENTLOOPTHREAD_H_
 
-#include "Reactor/EventLoop.h"
+#include "EventLoop.h"
 #include <condition_variable>
 #include <mutex>
 #include <thread>

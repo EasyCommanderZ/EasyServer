@@ -8,13 +8,13 @@
 #include <string>
 #include <sys/types.h>
 #include <unordered_map>
-#include "Http/HttpRequest.h"
-#include "Http/HttpResponse.h"
+#include "HttpRequest.h"
+#include "HttpResponse.h"
 #include "HttpData.h"
-#include "Log/Logger.h"
-#include "Reactor/Channel.h"
-#include "Reactor/EventLoop.h"
-#include "Util/sockUtil.h"
+#include "../Log/Logger.h"
+#include "../Reactor/Channel.h"
+#include "../Reactor/EventLoop.h"
+#include "../Util/sockUtil.h"
 #include <sys/epoll.h>
 #include <cassert>
 

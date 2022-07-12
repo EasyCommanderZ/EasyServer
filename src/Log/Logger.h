@@ -5,10 +5,9 @@
 ref-link:
 https://stackoverflow.com/questions/15858141/conveniently-declaring-compile-time-strings-in-c
 */
-#include "Log/LogBuffer.h"
-#include "Log/LogBuffer.h"
-#include "Log/LogConfig.h"
-#include "Util/noncopyable.h"
+#include "LogBuffer.h"
+#include "LogConfig.h"
+#include "../Util/noncopyable.h"
 #include <cstddef>
 #include <functional>
 #include <mutex>

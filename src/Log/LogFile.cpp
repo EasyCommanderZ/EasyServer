@@ -1,5 +1,5 @@
-#include "Log/LogFile.h"
-#include "Log/FileWriter.h"
+#include "LogFile.h"
+#include "FileWriter.h"
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>

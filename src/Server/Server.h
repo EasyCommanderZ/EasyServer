@@ -1,8 +1,8 @@
 #ifndef __SRC_SERVER_SERVER_H_
 #define __SRC_SERVER_SERVER_H_
 
-#include "Reactor/EventLoop.h"
-#include "Reactor/EventLoopThreadPool.h"
+#include "../Reactor/EventLoop.h"
+#include "../Reactor/EventLoopThreadPool.h"
 #include <memory>
 class Server {
 public:

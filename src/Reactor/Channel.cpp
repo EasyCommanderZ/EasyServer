@@ -1,6 +1,6 @@
 
-#include "Reactor/Channel.h"
-#include "Reactor/EventLoop.h"
+#include "Channel.h"
+#include "EventLoop.h"
 
 Channel::Channel(EventLoop *loop) :
     _loop(loop), _events(0), _lastEvents(0), _fd(0){};

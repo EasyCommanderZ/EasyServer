@@ -1,6 +1,6 @@
 
-#include "Log/Logger.h"
-#include "Reactor/Channel.h"
+#include "../Log/Logger.h"
+#include "Channel.h"
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -11,9 +11,9 @@
 #include <thread>
 #include <unistd.h>
 #include "EventLoop.h"
-#include "Reactor/Poller.h"
+#include "Poller.h"
 #include "../Util/miscUtil.h"
-#include "Util/sockUtil.h"
+#include "../Util/sockUtil.h"
 
 thread_local EventLoop *t_loopInThisThread = nullptr;
 

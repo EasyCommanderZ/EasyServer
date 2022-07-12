@@ -1,5 +1,5 @@
 #include "HttpRequest.h"
-#include "Log/Logger.h"
+#include "../Log/Logger.h"
 #include <algorithm>
 #include <cassert>
 #include <string>

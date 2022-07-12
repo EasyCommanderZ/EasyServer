@@ -1,6 +1,6 @@
-#include "Log/AsynLog.h"
-#include "Log/FileWriter.h"
-#include "Log/SynLog.h"
+#include "AsynLog.h"
+#include "FileWriter.h"
+#include "SynLog.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
