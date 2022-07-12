@@ -151,6 +151,8 @@ void HttpData::handleClose() {
     _connectionState = H_DISCONNECTED;
     std::shared_ptr<HttpData> guard(shared_from_this());
     _loop->removeFromPoller(_channel);
+    HttpData::userCount --;
+    LOG_INFO("Connection %s close, userCount : []", guard -> _fd, static_cast<int>(HttpData::userCount));
 }
 
 void HttpData::newEvent() {

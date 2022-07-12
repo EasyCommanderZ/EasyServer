@@ -31,6 +31,7 @@ void Server::start() {
     _acceptChannel->setConnHandler([this] { handleConn(); });
     _mainLoop->addToPoller(_acceptChannel, 0);
     _started = true;
+    LOG_INFO("EasyServer STARTED\n", 0);
 }
 
 void Server::handleNewConn() {
@@ -40,7 +41,6 @@ void Server::handleNewConn() {
     int accept_fd = 0;
     while ((accept_fd = accept(_listenFd, (struct sockaddr *)&client_addr, &client_addr_len)) > 0) {
         EventLoop *loop = _eventLoopPool->getNextLoop();
-        LOG_INFO("New Connection from %s : %d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
         // 限制服务器最大并发连接数
         if (accept_fd >= MAXFDS) {
@@ -59,6 +59,8 @@ void Server::handleNewConn() {
         std::shared_ptr<Channel> req_channel(new Channel(loop, accept_fd));
         std::shared_ptr<HttpData> req_info(new HttpData(req_channel, accept_fd));
         loop -> queueInLoop([req_info] { req_info->newEvent(); });
+        HttpData::userCount ++;
+        LOG_INFO("New Connection from %s : %d, userCount : [%d]", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), static_cast<int>(HttpData::userCount));
     }
     _acceptChannel -> setEvents(EPOLLIN | EPOLLET);
 }
