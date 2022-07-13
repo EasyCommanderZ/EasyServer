@@ -27,9 +27,9 @@ private:
 
     EventLoop *_loop;
     int _fd;
-    std::uint32_t _events; // 表示希望监听这个描述符的哪些事件
-    std::uint32_t _revents; // epoll 返回该 channel 时文件描述符正在发生的事件
-    std::uint32_t _lastEvents; // 
+    __uint32_t _events; // 表示希望监听这个描述符的哪些事件
+    __uint32_t _revents; // epoll 返回该 channel 时文件描述符正在发生的事件
+    __uint32_t _lastEvents; // 
     std::weak_ptr<HttpData> _holder; // 便于找到上层持有该 Channel 的连接
     
     CallBack _readHandler;
@@ -60,19 +60,19 @@ public:
     }
 
     void setReadHandler(CallBack &&readHandler) {
-        _readHandler = std::move(readHandler);
+        _readHandler = readHandler;
     }
 
     void setWriteHandle(CallBack &&writeHandler) {
-        _writeHandler = std::move(writeHandler);
+        _writeHandler = writeHandler;
     }
 
     void setErrorHandler(CallBack &&errorHandler) {
-        _errorHandler = std::move(errorHandler);
+        _errorHandler = errorHandler;
     }
 
     void setConnHandler(CallBack &&connHandler) {
-        _connHandler = std::move(connHandler);
+        _connHandler = connHandler;
     }
 
     void handleRead();
@@ -100,15 +100,15 @@ public:
         handleConn();
     }
 
-    void setRevents(std::uint32_t ev) {
+    void setRevents(__uint32_t ev) {
         _revents = ev;
     }
 
-    void setEvents(std::uint32_t ev) {
+    void setEvents(__uint32_t ev) {
         _events = ev;
     }
 
-    std::uint32_t& getEvents() {
+    __uint32_t& getEvents() {
         return _events;
     }
 
@@ -118,7 +118,7 @@ public:
         return ret;
     }
 
-    std::uint32_t getLastEvents() {
+    __uint32_t getLastEvents() {
         return _lastEvents;
     }
 

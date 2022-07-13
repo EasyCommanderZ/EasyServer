@@ -3,6 +3,7 @@
 #include "Channel.h"
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <sstream>
 #include <sys/epoll.h>
@@ -27,12 +28,20 @@ int createEventFd() {
 }
 
 EventLoop::EventLoop() :
-    _looping(false), _poller(new Poller()), _wakeupFd(createEventFd()), _quit(false), _eventHandling(false), _callingPendingFunctors(false), _threadId(std::this_thread::get_id()), _pwakeupChannel(new Channel(this, _wakeupFd)) {
+    _looping(false),
+    _poller(new Poller()),
+    _wakeupFd(createEventFd()),
+    _quit(false),
+    _eventHandling(false),
+    _callingPendingFunctors(false),
+    _threadId(ThreadInfo::tid()),
+    _pwakeupChannel(new Channel(this, _wakeupFd)) {
     if (t_loopInThisThread) {
-        LOG_ERROR("EventLoop already exists! thread id : %s\n", tidToStr(_threadId));
+        LOG_ERROR("EventLoop already exists! thread id : %s\n", ThreadInfo::tidString());
     } else {
         t_loopInThisThread = this;
     }
+    // std::cout << "pfd : " << _poller->getPollerFd() << std::endl;
 
     _pwakeupChannel->setEvents(EPOLLIN | EPOLLET);
     _pwakeupChannel->setReadHandler([this] { handleRead(); });
@@ -50,7 +59,7 @@ void EventLoop::handleConn() {
 }
 
 void EventLoop::wakeup() {
-    std::uint64_t one = 1;
+    uint64_t one = 1;
     ssize_t n = writen(_wakeupFd, (char *)(&one), sizeof one);
     if (n != sizeof one) {
         LOG_INFO("EventLoop: wakeup() writes %d bytes instead of 8\n", n);
@@ -58,12 +67,12 @@ void EventLoop::wakeup() {
 }
 
 void EventLoop::handleRead() {
-    std::uint64_t one = 1;
+    uint64_t one = 1;
     ssize_t n = readn(_wakeupFd, &one, sizeof one);
-    if(n != sizeof one) {
+    if (n != sizeof one) {
         LOG_INFO("EventLoop: handleRead reads %d bytes instad of 8\n", n);
     }
-    _pwakeupChannel -> setEvents(EPOLLIN | EPOLLET);
+    _pwakeupChannel->setEvents(EPOLLIN | EPOLLET);
 }
 
 void EventLoop::queueInLoop(Functor &&func) {
@@ -71,11 +80,11 @@ void EventLoop::queueInLoop(Functor &&func) {
         std::unique_lock<std::mutex> lck(_mtx);
         _pendingFunctors.emplace_back(std::move(func));
     }
-    if(!isInLoopThread() || _callingPendingFunctors) wakeup();
+    if (!isInLoopThread() || _callingPendingFunctors) wakeup();
 }
 
-void EventLoop::runInLoop(Functor&& func) {
-    if(isInLoopThread()) {
+void EventLoop::runInLoop(Functor &&func) {
+    if (isInLoopThread()) {
         func();
     } else {
         queueInLoop(std::move(func));
@@ -87,16 +96,16 @@ void EventLoop::loop() {
     assert(isInLoopThread());
     _looping = true;
     _quit = false;
-    LOG_TRACE("EventLoop starts looping, thread : %s\n", tidToStr(_threadId));
+    LOG_TRACE("EventLoop starts looping, thread : %s\n", ThreadInfo::tidString());
     std::vector<SP_Channel> ret;
-    while(!_quit) {
+    while (!_quit) {
         ret.clear();
-        ret = _poller -> poll();
+        ret = _poller->poll();
         _eventHandling = true;
-        for(auto& ch : ret) ch -> handleEvents();
+        for (auto &ch : ret) ch->handleEvents();
         _eventHandling = false;
         doPendingFunctors();
-        _poller -> handleExpired();
+        _poller->handleExpired();
     }
     _looping = false;
 }
@@ -108,13 +117,13 @@ void EventLoop::doPendingFunctors() {
         std::unique_lock<std::mutex> lck(_mtx);
         funcs.swap(_pendingFunctors);
     }
-    for(size_t i = 0; i < funcs.size(); i ++) funcs[i]();
+    for (auto & func : funcs) func();
     _callingPendingFunctors = false;
 }
 
 void EventLoop::quit() {
     _quit = true;
-    if(!isInLoopThread()) {
+    if (!isInLoopThread()) {
         wakeup();
     }
 }

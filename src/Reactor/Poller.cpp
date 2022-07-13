@@ -1,6 +1,9 @@
 #include "Poller.h"
 #include <cassert>
+#include <cerrno>
 #include <cstdio>
+#include <sys/epoll.h>
+#include <iostream>
 #include <memory>
 #include "../Log/Logger.h"
 
@@ -21,12 +24,14 @@ Poller::~Poller() = default;
 // 注册新描述符
 void Poller::poller_add(SP_Channel request, int timeout) {
     int fd = request->getFd();
+    // std::cout << "request fd : " << fd << std::endl;
     if (timeout > 0) {
         add_timer(request, timeout);
         _fdToHttp[fd] = request->getHolder();
     }
 #if defined(__linux__) || defined(__linux)
     struct epoll_event event;
+    event.data.fd = fd;
     event.events = request->getEvents();
 #endif
 
@@ -79,12 +84,11 @@ void Poller::poller_del(SP_Channel request) {
 // 返回活跃事件数
 std::vector<Poller::SP_Channel> Poller::poll() {
     while (true) {
-#if defined(__linux__) || defined(__linux)
-        int event_count = epoll_wait(_pollerFD, &*_events.begin(), _events.size(), POLLER_WAIT_TIME);
+        int event_count =
+        epoll_wait(_pollerFD, &*_events.begin(), _events.size(), POLLER_WAIT_TIME);
         if (event_count < 0) std::perror("epoll wait error");
         std::vector<Poller::SP_Channel> req_data = getEventRequest(event_count);
         if (req_data.size() > 0) return req_data;
-#endif
     }
 }
 
@@ -101,17 +105,19 @@ void Poller::handleExpired() {
     _timerManager.handleExpiredevent();
 }
 
+// 分发处理函数
 std::vector<Poller::SP_Channel> Poller::getEventRequest(int events_num) {
     std::vector<Poller::SP_Channel> req_data;
-    for(int i = 0 ; i < events_num ; i ++) {
+    for (int i = 0; i < events_num; i++) {
         // 获取有事件产生的描述符
         int fd = _events[i].data.fd;
+        // std::cout << "HERE : " << fd << std::endl;
+        // sleep(2);
         SP_Channel cur_req = _fdToChannel[fd];
 
-        if(cur_req) {
-            cur_req -> setRevents(_events[i].events);
-            cur_req -> setEvents(0);
-            
+        if (cur_req) {
+            cur_req->setRevents(_events[i].events);
+            cur_req->setEvents(0);
             req_data.push_back(cur_req);
         } else {
             LOG_ERROR("SP channel cur_req is invalid\n", 0);

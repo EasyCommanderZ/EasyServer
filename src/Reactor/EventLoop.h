@@ -11,6 +11,7 @@
 #include <thread>
 #include "Channel.h"
 #include "../Util/sockUtil.h"
+#include "Thread/ThreadInfo.h"
 
 class EventLoop {
 public:
@@ -24,7 +25,7 @@ public:
     void runInLoop(Functor&& func);
     void queueInLoop(Functor&& func);
     bool isInLoopThread() const {
-        return _threadId == std::this_thread::get_id();
+        return _threadId == ThreadInfo::tid();
     }
     void assertInLoopThread() {
         assert(isInLoopThread());
@@ -51,7 +52,7 @@ private:
     mutable std::mutex _mtx;
     std::vector<Functor> _pendingFunctors;
     bool _callingPendingFunctors;
-    const std::thread::id _threadId;
+    const pid_t _threadId;
     SP_Channel _pwakeupChannel;
 
     void wakeup();

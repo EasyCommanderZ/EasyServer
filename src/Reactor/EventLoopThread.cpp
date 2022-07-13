@@ -10,18 +10,18 @@ EventLoopThread::EventLoopThread() :
     _loop(nullptr), _exiting(false), _looping(false){};
 
 EventLoop *EventLoopThread::startLoop() {
+    assert(!_thread.joinable());
     assert(!_looping);
     _thread = std::thread([this] { threadFunc(); });
     {
         std::unique_lock<std::mutex> lck(_mtx);
-        while(_loop == nullptr) _cv.wait(lck);
+        _cv.wait(lck, [&] { return _loop != nullptr; });
     }
     return _loop;
 }
 
 void EventLoopThread::threadFunc() {
     EventLoop loop;
-
     {
         // PROBLEM : will this work ?
         std::unique_lock<std::mutex> lck(_mtx);
@@ -35,8 +35,8 @@ void EventLoopThread::threadFunc() {
 
 EventLoopThread::~EventLoopThread() {
     _exiting = true;
-    if(_loop != nullptr) {
-        _loop -> quit();
+    if (_loop != nullptr) {
+        _loop->quit();
         _thread.join();
     }
 }
