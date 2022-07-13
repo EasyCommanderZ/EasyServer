@@ -23,7 +23,8 @@ public:
     static const char *_srcDir;
     static std::atomic<int> userCount;
 
-    HttpData(SP_Channel channel, int connfd);
+    // HttpData(SP_Channel channel, int connfd);
+    HttpData(EventLoop* loop, int connfd);
     ~HttpData() {
         close(_fd);
     };

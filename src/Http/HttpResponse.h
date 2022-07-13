@@ -22,6 +22,9 @@ public:
         return _code;
     };
     void setCode(int code);
+    bool resErr() {
+        return _resErr;
+    }
 
 private:
     void AddStateLine(std::string &buff);
@@ -32,6 +35,7 @@ private:
     std::string GetFileType();
 
     int _code;
+    bool _resErr;
     bool _isKeepAlive;
 
     std::string _path;

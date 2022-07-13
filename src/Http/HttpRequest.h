@@ -51,6 +51,7 @@ private:
     void ParsePost();
     void ParseFromUrlencoded();
 
+    bool _keepAlive;
     PARSE_STATE _parseState;
     std::string _method, _path, _version, _body;
     std::unordered_map<std::string, std::string> _header;

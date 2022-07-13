@@ -44,6 +44,7 @@ const std::unordered_map<int, std::string> HttpResponse::CODE_PATH = {
 
 HttpResponse::HttpResponse() {
     _code = -1;
+    _resErr = false;
     _path = _srcDir = "";
     _isKeepAlive = false;
     _mmFile = nullptr;
@@ -59,6 +60,7 @@ void HttpResponse::Init(const std::string &srcDir, std::string &path, bool isKee
     if (_mmFile) {
         UnmapFile();
     }
+    _resErr = false;
     _code = code;
     _isKeepAlive = isKeepAlive;
     _path = path;
@@ -82,7 +84,7 @@ void HttpResponse::ErrorHtml() {
     }
 }
 
-void HttpResponse::AddStateLine(std::string& buff) {
+void HttpResponse::AddStateLine(std::string &buff) {
     std::string status;
     if (CODE_STATUS.count(_code) == 1) {
         status = CODE_STATUS.find(_code)->second;
@@ -90,7 +92,7 @@ void HttpResponse::AddStateLine(std::string& buff) {
         _code = 400;
         status = CODE_STATUS.find(400)->second;
     }
-    buff += "HTTP/1.1 " + std::to_string(_code) + " " + status + "\r\n";
+    buff += ("HTTP/1.1 " + std::to_string(_code) + " " + status + "\r\n");
 }
 
 void HttpResponse::AddHeader(std::string &buff) {
@@ -102,27 +104,30 @@ void HttpResponse::AddHeader(std::string &buff) {
         buff += "close\r\n";
     }
     buff += "Content-type: " + GetFileType() + "\r\n";
+    buff += "Server: EasyServer\r\n";
 }
 
 void HttpResponse::AddContent(std::string &buff) {
     int srcFd = open((_srcDir + _path).data(), O_RDONLY);
     if (srcFd < 0) {
+        _resErr = true;
         ErrorContent(buff, "File Not Found");
         return;
     }
 
     /* 将文件映射到内存提高文件的访问速度
         MAP_PRIVATE 建立一个写入时拷贝的私有映射*/
-    LOG_DEBUG("file path %s", (_srcDir + _path).data());
+    LOG_TRACE("file path %s \n", (_srcDir + _path).data());
     int *mmRet = (int *)mmap(0, _mmFileStat.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0);
+    close(srcFd);
     if (*mmRet == -1) {
+        _resErr = true;
         ErrorContent(buff, "File NotFound!");
         return;
     }
     _mmFile = (char *)mmRet;
-    close(srcFd);
     buff += "Content-length: " + std::to_string(_mmFileStat.st_size) + "\r\n\r\n";
-    buff += "Server: EasyServer\r\n";
+    buff += std::string(_mmFile, _mmFile + _mmFileStat.st_size);
 }
 
 void HttpResponse::UnmapFile() {
@@ -148,6 +153,7 @@ std::string HttpResponse::GetFileType() {
 void HttpResponse::ErrorContent(std::string &buff, std::string message) {
     std::string body;
     std::string status;
+
     body += "<html><title>QAQ EASY NOT EASY</title>";
     body += "<body bgcolor=\"ffffff\">";
     if (CODE_STATUS.count(_code) == 1) {
@@ -157,37 +163,25 @@ void HttpResponse::ErrorContent(std::string &buff, std::string message) {
     }
     body += std::to_string(_code) + " : " + status + "\n";
     body += "<p>" + message + "</p>";
-    body += "<hr><em>EasyServer</em></body></html>";
-
+    body += "<hr><em>EasyServer</em>\n</body></html>";
     buff += "Content-length: " + std::to_string(body.size()) + "\r\n\r\n";
-    buff += "Server: EasyServer\r\n";
     buff += body;
 }
 
-void HttpResponse::MakeResponse(std::string& buff) {
+void HttpResponse::MakeResponse(std::string &buff) {
     /* 判断请求的资源文件 */
-    if(stat((_srcDir + _path).data(), &_mmFileStat) < 0 || S_ISDIR(_mmFileStat.st_mode)) {
+    if (stat((_srcDir + _path).data(), &_mmFileStat) < 0 || S_ISDIR(_mmFileStat.st_mode)) {
         _code = 404;
-    }
-    else if(!(_mmFileStat.st_mode & S_IROTH)) {
+    } else if (!(_mmFileStat.st_mode & S_IROTH)) {
         _code = 403;
-    }
-    else if(_code == -1) { 
-        _code = 200; 
+    } else if (_code == -1) {
+        _code = 200;
     }
     ErrorHtml();
     AddStateLine(buff);
     AddHeader(buff);
     AddContent(buff);
 }
-
-void HttpResponse::handleErrorResponse(std::string &buff) {
-    ErrorHtml();
-    AddStateLine(buff);
-    AddHeader(buff);
-    ErrorContent(buff, "Request Error");
-}
-
 
 void HttpResponse::setCode(int code) {
     _code = code;

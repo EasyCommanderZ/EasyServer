@@ -26,6 +26,7 @@ HttpRequest::HttpRequest() {
     _parseState = REQUEST_LINE;
     _header.clear();
     _post.clear();
+    _keepAlive = false;
 }
 
 void HttpRequest::Init() {
@@ -63,7 +64,7 @@ void HttpRequest::ParsePath() {
 }
 
 void HttpRequest::ParseHeader(const std::string &line) {
-    std::regex patten("^([^:]*): ?(.*)$");
+    std::regex patten("([\\w-]+): (.*)");
     std::smatch subMatch;
     if (regex_match(line, subMatch, patten)) {
         _header[subMatch[1]] = subMatch[2];
@@ -73,12 +74,12 @@ void HttpRequest::ParseHeader(const std::string &line) {
 }
 
 void HttpRequest::ParseFromUrlencoded() {
-    if(_body.size() == 0) return ;
+    if (_body.size() == 0) return;
     std::string key, value;
     int num = 0, n = _body.size();
     int i = 0, j = 0;
 
-    for( ; i < n; i ++) {
+    for (; i < n; i++) {
         char ch = _body[i];
         switch (ch) {
         case '=':
@@ -98,14 +99,14 @@ void HttpRequest::ParseFromUrlencoded() {
             value = _body.substr(j, i - j);
             j = i + 1;
             _post[key] = value;
-            LOG_DEBUG("%s = %s", key.c_str(), value.c_str());
+            LOG_TRACE("%s = %s \n", key.c_str(), value.c_str());
             break;
         default:
             break;
         }
     }
     assert(j <= i);
-    if(_post.count(key) == 0 && j < i) {
+    if (_post.count(key) == 0 && j < i) {
         value = _body.substr(j, i - j);
         _post[key] = value;
     }
@@ -114,12 +115,12 @@ void HttpRequest::ParseFromUrlencoded() {
 // Add more post pages;
 void HttpRequest::ParsePost() {
     if (_method == "POST" && _header["Content-Type"] == "applicaton/x-www-form-urlencoded'") {
-        LOG_DEBUG("Post method, path : %s", _path.c_str());
+        LOG_TRACE("Post method, path : %s\n", _path.c_str());
         ParseFromUrlencoded();
         // if (DEFAULT_HTML_TAG.count(_path)) {
         //     int tag = DEFAULT_HTML_TAG.find(_path) -> second;
         //     switch (tag) {
-            
+
         //     }
         // }
     }
@@ -129,16 +130,17 @@ void HttpRequest::ParseBody(const std::string &line) {
     _body = line;
     ParsePost();
     _parseState = FINISH;
-    LOG_DEBUG("Body:%s, len:%d", line.c_str(), line.size());
+    LOG_TRACE("Body:%s, len:%d\n", line.c_str(), line.size());
 }
 
 bool HttpRequest::parse(std::string &buff) {
     const char CRLF[] = "\r\n";
-    if(buff.empty()) return false;
-    ssize_t cur = 0;
-    while(cur < static_cast<ssize_t>(buff.size()) && _parseState != FINISH) {
-        auto lineEnd = std::search(buff.begin() + cur, buff.end(), CRLF, CRLF + 2);
-        std::string line(buff.begin() + cur, lineEnd);
+    if (buff.empty()) return false;
+    auto cur = buff.begin();
+    while (cur != buff.end() && _parseState != FINISH) {
+        auto lineEnd = std::search(cur, buff.end(), CRLF, CRLF + 2);
+        std::string line(cur, lineEnd);
+        cur = lineEnd + 2;
         switch (_parseState) {
         case REQUEST_LINE:
             if (!ParseRequestLine(line)) {
@@ -148,7 +150,7 @@ bool HttpRequest::parse(std::string &buff) {
             break;
         case HEADERS:
             ParseHeader(line);
-            if (buff.size() - cur <= 3) {
+            if (buff.end() - cur <= 3) {
                 _parseState = FINISH;
             }
             break;
@@ -161,28 +163,28 @@ bool HttpRequest::parse(std::string &buff) {
         // buff.RetrieveUntil(lineEnd + 2);
         // buff.clear();
     }
-    LOG_DEBUG("[%s], [%s], [%s]", _method.c_str(), _path.c_str(), _version.c_str());
+    if (_header.count("Connection") == 1) {
+        _keepAlive = ( _header.find("Connection")->second == "keep-alive" && _version == "1.1");
+    }
+    LOG_TRACE("[%s], [%s], [%s] \n", _method.c_str(), _path.c_str(), _version.c_str());
     return true;
 }
 
 bool HttpRequest::isKeepAlive() const {
-    if (_header.count("Connection") == 1) {
-        return _header.find("Connection")->second == "keep-alive" && _version == "1.1";
-    }
-    return false;
+    return _keepAlive;
 }
 
 int HttpRequest::ConverHex(char ch) {
-    if(ch >= 'A' && ch <= 'F') return ch -'A' + 10;
-    if(ch >= 'a' && ch <= 'f') return ch -'a' + 10;
+    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
     return ch;
 }
 
-std::string HttpRequest::path() const{
+std::string HttpRequest::path() const {
     return _path;
 }
 
-std::string& HttpRequest::path(){
+std::string &HttpRequest::path() {
     return _path;
 }
 std::string HttpRequest::method() const {
@@ -193,17 +195,17 @@ std::string HttpRequest::version() const {
     return _version;
 }
 
-std::string HttpRequest::GetPost(const std::string& key) const {
+std::string HttpRequest::GetPost(const std::string &key) const {
     assert(key != "");
-    if(_post.count(key) == 1) {
+    if (_post.count(key) == 1) {
         return _post.find(key)->second;
     }
     return "";
 }
 
-std::string HttpRequest::GetPost(const char* key) const {
+std::string HttpRequest::GetPost(const char *key) const {
     assert(key != nullptr);
-    if(_post.count(key) == 1) {
+    if (_post.count(key) == 1) {
         return _post.find(key)->second;
     }
     return "";
