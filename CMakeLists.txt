@@ -42,6 +42,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #设置可执行程序路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 #设置子目录
+# Thread 的顺序要放在最后 不然会导致错误 原因暂时未知
 set(SUB_DIR_LIST "Reactor" "Server" "Util" "Http" "Log" "Thread")
 foreach(SUB_DIR ${SUB_DIR_LIST})
     # 遍历源文件
