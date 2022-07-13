@@ -9,19 +9,32 @@
 #include <cstdlib>
 #include <functional>
 #include <arpa/inet.h>
+#include <iostream>
 #include <memory>
 #include <netinet/in.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cassert>
 
 Server::Server(EventLoop *loop, int threadNum, int port) :
-    _mainLoop(loop), _threadNum(threadNum), _eventLoopPool(new EventLoopThreadPool(_mainLoop, _threadNum)), _started(false), _acceptChannel(new Channel(_mainLoop)), _port(port), _listenFd(socket_bind_listen(_port)) {
+    _mainLoop(loop),
+    _threadNum(threadNum),
+    _eventLoopPool(new EventLoopThreadPool(_mainLoop, _threadNum)),
+    _started(false),
+    _acceptChannel(new Channel(_mainLoop)),
+    _port(port),
+    _listenFd(socket_bind_listen(_port)) {
     _acceptChannel->setFd(_listenFd);
     handle_for_sigpipe();
     if (setSocketNonBlocking(_listenFd) < 0) {
         perror("set socket non-block failed \n");
         abort();
     }
+    char *srcDir = getcwd(nullptr, 256);
+    assert(srcDir);
+    HttpData::userCount = 0;
+    HttpData::_srcDir = srcDir;
 }
 
 void Server::start() {
@@ -56,11 +69,13 @@ void Server::handleNewConn() {
         setSocketNodelay(accept_fd);
         // setSocketNoLinger(accept_fd);
 
-        std::shared_ptr<Channel> req_channel(new Channel(loop, accept_fd));
-        std::shared_ptr<HttpData> req_info(new HttpData(req_channel, accept_fd));
+        std::shared_ptr<HttpData> req_info(new HttpData(loop, accept_fd));
+        req_info->getChannel()->setHolder(req_info);
+
         loop->queueInLoop([req_info] { req_info->newEvent(); });
+
         HttpData::userCount++;
-        LOG_INFO("New Connection from %s : %d, userCount : [%d]", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), static_cast<int>(HttpData::userCount));
+        LOG_INFO("New Connection from %s:%d, userCount : [%d]\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), static_cast<int>(HttpData::userCount));
     }
     _acceptChannel->setEvents(EPOLLIN | EPOLLET);
 }

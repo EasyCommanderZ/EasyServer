@@ -32,6 +32,9 @@ endif()
 
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
+string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
+
 # CMAKE 配置参考了很多 ZLToolKit 的写法 
 
 #设置库文件路径
@@ -39,7 +42,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #设置可执行程序路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 #设置子目录
-set(SUB_DIR_LIST "Thread" "Log" "Util" "Reactor" "Http" "Server")
+set(SUB_DIR_LIST "Reactor" "Server" "Util" "Http" "Log" "Thread")
 foreach(SUB_DIR ${SUB_DIR_LIST})
     # 遍历源文件
     aux_source_directory(src/${SUB_DIR} SRC_LIST)
@@ -106,6 +109,6 @@ include(CTest)
 enable_testing()
 add_subdirectory(tests)
 
-file(GLOB sources src/main.cpp)
+file(GLOB sources main.cpp)
 add_executable(main ${sources})
 target_link_libraries(main PUBLIC ${PROJECT_NAME}_shared)
