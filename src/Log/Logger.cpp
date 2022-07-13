@@ -2,8 +2,8 @@
 #include "LogBuffer.h"
 #include "LogConfig.h"
 #include "SynLog.h"
-// #include "Util/ThreadInfo.h"
 #include "../Util/Timestamp.h"
+#include "../Thread/ThreadInfo.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -111,15 +111,15 @@ void Logger::append(const char *file, size_t fileLen, const char *line, size_t l
 
     // 线程信息
     buffer.append("tid:", 4);
-    // buffer.append(ThreadInfo::getTidStr().c_str(), ThreadInfo::getTidStrlen());
 
-    auto currentTID = std::this_thread::get_id();
-    std::ostringstream ss;
-    ss << currentTID;
-
-    std::string tidStr = ss.str();
-    size_t tidStrLen = static_cast<size_t>(tidStr.size());
-    buffer.append(ss.str().c_str(), tidStrLen);
+    // auto currentTID = std::this_thread::get_id();
+    // std::ostringstream ss;
+    // ss << currentTID;
+    // std::string tidStr = ss.str();
+    // size_t tidStrLen = static_cast<size_t>(tidStr.size());
+    // buffer.append(ss.str().c_str(), tidStrLen);
+    
+    buffer.append(ThreadInfo::tidString(), ThreadInfo::tidStringLength());
 
     // sourcefile [line:NUM] - LogLevel : text
     buffer.append(" ", 1);

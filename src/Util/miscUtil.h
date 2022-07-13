@@ -4,14 +4,14 @@
 #include <sstream>
 #include <string>
 #include <thread>
-const auto tidToStr(std::thread::id tid){
+#include <sys/syscall.h>
+#include <unistd.h>
+
+auto tidToStr(std::thread::id tid) {
     std::ostringstream ss;
     ss << tid;
     std::string str = ss.str();
-    auto ret = str.c_str();
-    return ret;
+    return str;
 };
-
-
 
 #endif /* __SRC_UTIL_MISCUTIL_H_ */
