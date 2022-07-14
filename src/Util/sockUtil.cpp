@@ -1,6 +1,6 @@
 
-#include "Util/sockUtil.h"
-#include <asm-generic/socket.h>
+#include "sockUtil.h"
+#include <sys/socket.h>
 #include <cerrno>
 #include <cstddef>
 #include <fcntl.h>
