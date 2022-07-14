@@ -1,4 +1,7 @@
 # EasyServer
+
+![GitHub](https://img.shields.io/github/license/EasyCommanderZ/EasyServer?style=for-the-badge)
+
 使用C++开发的轻量级Web服务器，主要用于熟悉和实践网络编程。
 
 项目管理使用CMAKE。
