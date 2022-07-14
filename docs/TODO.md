@@ -1,3 +1,7 @@
 # TODO
 
-SO MANY THINGS TO DO !
+### 22.7.14 update
+
+- [ ] 增加 server 整体的功能测试
+- [ ] 增加性能测试
+- [ ] 补充 
