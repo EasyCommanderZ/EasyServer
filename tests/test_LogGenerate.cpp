@@ -1,6 +1,5 @@
 
 #include "Log/Logger.h"
-// #include "Util/ThreadInfo.h"
 #include <chrono>
 #include <iostream>
 #include <sstream>

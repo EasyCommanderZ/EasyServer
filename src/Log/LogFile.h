@@ -1,8 +1,8 @@
 #ifndef __SRC_LOG_LOGFILE_H_
 #define __SRC_LOG_LOGFILE_H_
 
-#include "Log/FileWriter.h"
-#include "Util/noncopyable.h"
+#include "FileWriter.h"
+#include "../Util/noncopyable.h"
 #include <cstddef>
 #include <memory>
 #include <string>

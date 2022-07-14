@@ -1,7 +1,7 @@
 #ifndef __SRC_LOG_BUFFER_H_
 #define __SRC_LOG_BUFFER_H_
 
-#include "Util/noncopyable.h"
+#include "../Util/noncopyable.h"
 #include <cstddef>
 #include <cstring>
 

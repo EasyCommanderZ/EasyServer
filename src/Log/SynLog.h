@@ -1,10 +1,10 @@
 #ifndef __SRC_LOG_SYNLOG_H_
 #define __SRC_LOG_SYNLOG_H_
 
-#include "Log/FileWriter.h"
-#include "Log/LogConfig.h"
-#include "Log/LogFile.h"
-#include "Util/noncopyable.h"
+#include "FileWriter.h"
+#include "LogConfig.h"
+#include "LogFile.h"
+#include "../Util/noncopyable.h"
 #include <cstddef>
 #include <mutex>
 #include <string>

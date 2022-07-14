@@ -1,4 +1,4 @@
-#include "Log/FileWriter.h"
+#include "FileWriter.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -9,7 +9,7 @@ NormalFileWriter::NormalFileWriter(const std::string &filename) {
     // FILE MODE : WE
     _fp = ::fopen(filename.c_str(), "ae");
     if (_fp == nullptr) {
-        perror("FileWriter - NormalFileWriter open file failed : ");
+        perror("FileWriter - NormalFileWriter open file failed ");
         int err = ferror(_fp);
         fprintf(stderr, "FileWriter - NormalFileWriter open file : %s failed, errno : %s\n", filename.c_str(), strerror(err));
         abort();

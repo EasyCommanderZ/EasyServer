@@ -1,7 +1,7 @@
 #ifndef __SRC_LOG_LOGCONFIG_H_
 #define __SRC_LOG_LOGCONFIG_H_
 
-#include "Log/FileWriter.h"
+#include "FileWriter.h"
 #include <cstddef>
 #include <string>
 

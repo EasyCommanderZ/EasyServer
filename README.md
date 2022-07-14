@@ -15,4 +15,4 @@
 
 ## 致谢
 
-参考的项目有很多，记录在 [开始Coding之前](./Docs/BeforeStart.md) 的最后。非常感谢这些无私的开源作者！
+参考的项目有很多，记录在 [开始Coding之前](./docs/BeforeStart.md) 的最后。非常感谢这些无私的开源作者！
