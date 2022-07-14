@@ -8,6 +8,6 @@ os:
 install:
   - sudo apt-get install cmake
 env:
-
+  - BUILD_TYPE=debug
 script:
   - ./build.sh
