@@ -3,7 +3,7 @@
 #include <netinet/in.h>
 #include <cstdio>
 #include <cstdlib>
-#include <string.h>
+#include <cstring>
 #include <strings.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
