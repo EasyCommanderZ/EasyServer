@@ -13,7 +13,7 @@
 #include <sstream>
 #include <string>
 
-const int NN = 1e5;
+const int NN = 1e6;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {
@@ -38,7 +38,7 @@ void SynLogger() {
     config.logFileOptions.baseName = "test-Synlog";
     config.logFileOptions.fileWriterType = FileWriterType::FileWriter_NORMAL;
     // 单个日志文件大小上限设置为 500 M；
-    config.logFileOptions.rollSize = static_cast<size_t>(500 * 1024 * 1024);
+    config.logFileOptions.rollSize = static_cast<size_t>(200 * 1024 * 1024);
     Logger::setConfig(config);
     synLog = std::make_unique<SynLog>();
     Logger::setOutputFunc(synOutput);

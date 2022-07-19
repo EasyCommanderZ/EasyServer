@@ -6,7 +6,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-constexpr int NN = 1e4;
+constexpr int NN = 1e6;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {

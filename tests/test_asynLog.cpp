@@ -9,11 +9,11 @@
 #include <thread>
 #include <iostream>
 
-const int NN = 1e3;
+const int NN = 1e6;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {
-        const char *curTid = ThreadInfo::tidString();
+        auto curTid = std::this_thread::get_id();
         LOG_TRACE("TRACE Log, current thread id = %s\n", curTid);
         LOG_DEBUG("DEBUG log, current thread id = %s\n", curTid);
         LOG_INFO("INFO log, current thread id = %d\n", curTid);
