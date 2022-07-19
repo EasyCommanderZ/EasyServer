@@ -138,7 +138,7 @@ void HttpData::handleConn() {
             _loop->updatePoller(_channel, timeout);
         } else {
             events |= (EPOLLIN | EPOLLET);
-            int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
+            int timeout = (DEFAULT_EXPIRED_TIME >> 1);
             _loop->updatePoller(_channel, timeout);
         }
     } else if (!_error && _connectionState == H_DISCONNECTING && (events & EPOLLOUT)) {

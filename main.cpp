@@ -10,7 +10,7 @@
 #include <getopt.h>
 
 int main(int argc, char *argv[]) {
-    int threadNum = 4;
+    int threadNum = 8;
     int port = 1316;
     std::string logName = "EasyServerLog";
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 
     std::unique_ptr<AsynLog> asynLog;
     LogConfig config;
-    config.logLevel = LogConfig::TRACE;
+    config.logLevel = LogConfig::INFO;
     config.logFileOptions.baseName = logName;
     config.logFileOptions.fileWriterType = FileWriterType::FileWriter_NORMAL;
     config.logFileOptions.rollSize = static_cast<size_t>(500 * 1024 * 1024);

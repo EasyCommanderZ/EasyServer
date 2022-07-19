@@ -133,4 +133,12 @@ private:
         getStr_(__FILE__), getStrLen_(__FILE__), strify_(__LINE__), \
         getStrLen_(strify_(__LINE__)), fmt, LogConfig::FATAL, args)
 
+// 关闭日志
+// #define LOG_TRACE(fmt, args...) ;
+// #define LOG_DEBUG(fmt, args...) ;
+// #define LOG_INFO(fmt, args...) ;
+// #define LOG_WARN(fmt, args...) ;
+// #define LOG_ERROR(fmt, args...) ;
+// #define LOG_FATAL(fmt, args...) ;
+
 #endif /* __SRC_LOG_LOGGER_H_ */
