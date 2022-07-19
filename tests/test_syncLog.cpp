@@ -3,6 +3,7 @@
 #include "Log/LogFile.h"
 #include "Log/Logger.h"
 #include "Log/SynLog.h"
+#include "Thread/ThreadInfo.h"
 #include <memory>
 #include <thread>
 #include <cstddef>
@@ -16,15 +17,12 @@ const int NN = 1e5;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {
-        auto curTID = std::this_thread::get_id();
-        std::ostringstream ss;
-        ss << curTID;
-        size_t curId = std::stoull(ss.str().c_str());
-        LOG_TRACE("TRACE Log, current thread id = %s\n", ss.str().c_str());
-        LOG_DEBUG("DEBUG log, current thread id = %d\n", curId);
-        LOG_INFO("INFO log, current thread id = %d\n", curId);
-        LOG_WARN("WARN log, current thread id = %d\n", curId);
-        LOG_ERROR("ERROR log, current thread id = %d\n", curId);
+        const char *curTid = ThreadInfo::tidString();
+        LOG_TRACE("TRACE Log, current thread id = %s\n", curTid);
+        LOG_DEBUG("DEBUG log, current thread id = %s\n", curTid);
+        LOG_INFO("INFO log, current thread id = %d\n", curTid);
+        LOG_WARN("WARN log, current thread id = %d\n", curTid);
+        LOG_ERROR("ERROR log, current thread id = %d\n", curTid);
     }
 }
 

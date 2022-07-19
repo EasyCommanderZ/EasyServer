@@ -2,26 +2,23 @@
 #include "Log/FileWriter.h"
 #include "Log/LogConfig.h"
 #include "Log/Logger.h"
+#include "Thread/ThreadInfo.h"
 #include <cstddef>
 #include <memory>
 #include <sstream>
 #include <thread>
 #include <iostream>
 
-const int NN = 1e5;
+const int NN = 1e3;
 
 void testFunc() {
     for (int i = 0; i < NN; i++) {
-        auto curTID = std::this_thread::get_id();
-        std::ostringstream ss;
-        ss << curTID;
-        // size_t curId = std::stoull(ss.str().c_str());
-        auto curId = ss.str().c_str();
-        LOG_TRACE("TRACE Log, current thread id = %s\n", curId);
-        LOG_DEBUG("DEBUG log, current thread id = %s\n", curId);
-        LOG_INFO("INFO log, current thread id = %s\n", curId);
-        LOG_WARN("WARN log, current thread id = %s\n", curId);
-        LOG_ERROR("ERROR log, current thread id = %s\n", curId);
+        const char *curTid = ThreadInfo::tidString();
+        LOG_TRACE("TRACE Log, current thread id = %s\n", curTid);
+        LOG_DEBUG("DEBUG log, current thread id = %s\n", curTid);
+        LOG_INFO("INFO log, current thread id = %d\n", curTid);
+        LOG_WARN("WARN log, current thread id = %d\n", curTid);
+        LOG_ERROR("ERROR log, current thread id = %d\n", curTid);
     }
 }
 std::unique_ptr<AsynLog> asynLog;
