@@ -24,11 +24,17 @@ inline int tid() {
 
 inline const char *tidString() // for logging
 {
+    if (__builtin_expect(t_cachedTid == 0, 0)) {
+        cacheTid();
+    }
     return t_tidString;
 }
 
 inline int tidStringLength() // for logging
 {
+    if (__builtin_expect(t_cachedTid == 0, 0)) {
+        cacheTid();
+    }
     return t_tidStringLength;
 }
 

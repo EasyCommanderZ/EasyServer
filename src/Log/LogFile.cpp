@@ -54,9 +54,9 @@ std::string LogFile::getLogFileName(const std::string &basename) {
     // auto currentTID = std::this_thread::get_id();
     // std::ostringstream ss;
     // ss << currentTID;
-    std::string tid = ThreadInfo::t_tidString;
+    // std::string tid = ThreadInfo::t_tidString;
 
-    filename += '.' + tid;
+    // filename += '.' + tid.substr(0, ThreadInfo::tidStringLength());
 
     filename += ".log";
     return filename;
