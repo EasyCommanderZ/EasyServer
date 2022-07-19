@@ -46,7 +46,7 @@ bool HttpRequest::ParseRequestLine(const std::string &line) {
         _parseState = HEADERS;
         return true;
     }
-    LOG_ERROR("RequstLine Error", 0);
+    LOG_ERROR("RequstLine Error\n", 0);
     return false;
 }
 
