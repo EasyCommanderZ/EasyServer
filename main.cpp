@@ -10,7 +10,7 @@
 #include <getopt.h>
 
 int main(int argc, char *argv[]) {
-    int threadNum = 1;
+    int threadNum = 4;
     int port = 1316;
     std::string logName = "EasyServerLog";
 
