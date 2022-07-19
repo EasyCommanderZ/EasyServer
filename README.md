@@ -2,11 +2,11 @@
 
 ![GitHub](https://img.shields.io/github/license/EasyCommanderZ/EasyServer?style=for-the-badge)
 
-EasyServer 是使用 C++ 11 及以上标准开发的轻量级Web服务器。
+EasyServer 是使用 C++ 17 标准开发的轻量级Web服务器。
 
 ## 项目特点
 
-- 基于 C++ 11 及以上标准开发，使用标准库提供的智能指针或将类按照RAII方式来设计，降低内存泄漏的可能。
+- 基于 C++ 17 标准开发，使用标准库提供的智能指针或将类按照RAII方式来设计，降低内存泄漏的可能。
 - 使用 线程池 + 非阻塞 Socket + Epoll (ET) + Reactor模式的并发模型。主线程作为 Acceptor 接受请求，并分发给其他事件处理线程。
 - 使用基于标准库优先队列 (Priority_Queue) 实现的定时器关闭超时请求，采用惰性删除。
 - 使用 eventfd 实现了线程的异步唤醒。
@@ -17,7 +17,7 @@ EasyServer 是使用 C++ 11 及以上标准开发的轻量级Web服务器。
 
 仅列出我的开发环境以供参考。
 
-- OS : Debian 4.19.146-1 (2020-09-17) x86_64 GNU/Linux
+- OS : Debian 4.19.146-1 (2020-09-17) x86_64 GNU/Linux ( Debian 10.12 )
 - Compiler : GCC 8.3.0 x86_64-linux-gnu
 - CMake : 3.13.4 ( set minimum required version to 3.12 in CMakeLists ) 
 
