@@ -55,6 +55,8 @@ private:
     bool _isClose;
     bool _error;
     ConnectionState _connectionState;
+    bool _keepAlive;
+    bool _finished;
 
     std::weak_ptr<TimerNode> _timer;
 

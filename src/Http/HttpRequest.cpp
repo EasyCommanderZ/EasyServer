@@ -180,9 +180,9 @@ int HttpRequest::ConverHex(char ch) {
     return ch;
 }
 
-std::string HttpRequest::path() const {
-    return _path;
-}
+// std::string HttpRequest::path() const {
+//     return _path;
+// }
 
 std::string &HttpRequest::path() {
     return _path;

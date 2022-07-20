@@ -133,34 +133,6 @@ ssize_t writen(int fd, std::string &sbuff) {
     return writeSum;
 }
 
-ssize_t write(int fd, std::string &buff) {
-    size_t nleft = buff.size();
-    ssize_t nwritten = 0, writeSum = 0;
-    const char *ptr = buff.c_str();
-    while (nleft > 0) {
-        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-            if (nwritten < 0) {
-                if (errno == EINTR) {
-                    nwritten = 0;
-                    continue;
-                } else if (errno == EAGAIN)
-                    break;
-                else
-                    return -1;
-            }
-        }
-        writeSum += nwritten;
-        nleft -= nwritten;
-        ptr += nwritten;
-    }
-    if (writeSum == static_cast<int>(buff.size())) {
-        buff.clear();
-    } else {
-        buff = buff.substr(writeSum);
-    }
-    return writeSum;
-}
-
 int setSocketNonBlocking(int fd) {
     int flag = fcntl(fd, F_GETFL, 0);
     if (flag == -1) return -1;

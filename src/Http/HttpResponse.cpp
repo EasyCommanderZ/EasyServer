@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <unordered_map>
 
+const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000; // ms
+
 const std::unordered_map<std::string, std::string> HttpResponse::SUFFIX_TYPE = {
     {".html", "text/html"},
     {".xml", "text/xml"},
@@ -99,7 +101,7 @@ void HttpResponse::AddHeader(std::string &buff) {
     buff += "Connection: ";
     if (_isKeepAlive) {
         buff += "keep-alive\r\n";
-        buff += "keep-alive: max=6, timeout=120\r\n";
+        buff += "keep-alive: timeout=" + std::to_string(DEFAULT_KEEP_ALIVE_TIME) + "\r\n";
     } else {
         buff += "close\r\n";
     }
@@ -111,18 +113,19 @@ void HttpResponse::AddContent(std::string &buff) {
     int srcFd = open((_srcDir + _path).data(), O_RDONLY);
     if (srcFd < 0) {
         _resErr = true;
+        _code = 404;
         ErrorContent(buff, "File Not Found");
         return;
     }
 
     /* 将文件映射到内存提高文件的访问速度
         MAP_PRIVATE 建立一个写入时拷贝的私有映射*/
-    LOG_TRACE("file path %s \n", (_srcDir + _path).data());
     int *mmRet = (int *)mmap(0, _mmFileStat.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0);
     close(srcFd);
+    LOG_TRACE("file path %s \n", (_srcDir + _path).data());
     if (*mmRet == -1) {
         _resErr = true;
-        ErrorContent(buff, "File NotFound!");
+        ErrorContent(buff, "File Not Found!");
         return;
     }
     _mmFile = (char *)mmRet;
@@ -169,6 +172,7 @@ void HttpResponse::ErrorContent(std::string &buff, std::string message) {
 }
 
 void HttpResponse::MakeResponse(std::string &buff) {
+
     /* 判断请求的资源文件 */
     if (stat((_srcDir + _path).data(), &_mmFileStat) < 0 || S_ISDIR(_mmFileStat.st_mode)) {
         _code = 404;
@@ -177,6 +181,7 @@ void HttpResponse::MakeResponse(std::string &buff) {
     } else if (_code == -1) {
         _code = 200;
     }
+
     ErrorHtml();
     AddStateLine(buff);
     AddHeader(buff);

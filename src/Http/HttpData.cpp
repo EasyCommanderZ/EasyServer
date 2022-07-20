@@ -35,7 +35,9 @@ HttpData::HttpData(EventLoop *loop, int connfd) :
     _fd(connfd),
     _isClose(false),
     _connectionState(H_CONNECTED),
-    _error(false) {
+    _error(false),
+    _keepAlive(false),
+    _finished(false) {
     _channel->setReadHandler([this] { handleRead(); });
     _channel->setWriteHandle([this] { handleWrite(); });
     _channel->setConnHandler([this] { handleConn(); });
@@ -54,7 +56,7 @@ void HttpData::handleRead() {
     do {
         bool zero = false;
         int read_num = readn(_fd, _inBuffer, zero);
-        // LOG_TRACE("Request inBuffer : %s\n", _inBuffer.c_str());
+        LOG_TRACE("Request inBuffer : %s\n", _inBuffer.c_str());
         if (_connectionState == H_DISCONNECTING) {
             _inBuffer.clear();
             break;
@@ -65,29 +67,42 @@ void HttpData::handleRead() {
             handleError(_fd, 400, "Bad Request : can't read");
             break;
         } else if (zero) {
+            // 有请求出现但是读不到数据，可能是Request
+            // Aborted，或者来自网络的数据没有达到等原因
+            // 最可能是对端已经关闭了，统一按照对端已经关闭处理
+            // error_ = true;
             _connectionState = H_DISCONNECTING;
             if (read_num == 0) break;
         }
 
         bool parseSuccess = _request.parse(_inBuffer);
+        _inBuffer.clear();
         if (!parseSuccess) {
+            _error = true;
             handleError(_fd, 400, "Bad Request : parse request error");
             break;
-        } else {
-            _inBuffer.clear();
         }
-        _response.Init(_srcDir, _request.path(), _request.isKeepAlive(), 200);
+        
+        // _keepAlive = _request.isKeepAlive();
+        _response.Init(_srcDir, _request.path(), _keepAlive, 200);
         _response.MakeResponse(_outBuffer);
+        if(_response.resErr()) {
+            _error = true;
+            handleError(_fd, 404, "File Not Found");
+            break;
+        }
+        _finished = true;
+
     } while (false); // ET read 在 readn 中实现
-    if (_response.resErr()) {
-        handleError(_fd, _response.Code(), "Response error");
-        _error = true;
-    }
+
     if (!_error) {
         if (_outBuffer.size() > 0) {
             handleWrite();
+            _connectionState = H_DISCONNECTING;
         }
-        if (!_error && _request.GetParseState() == _request.FINISH) {
+        // state of _error may change in handleWrite()
+        // if (!_error && _request.GetParseState() == _request.FINISH) {
+        if (!_error && _finished) {
             this->reset();
             if (_inBuffer.size() > 0) {
                 if (_connectionState != H_DISCONNECTING) handleRead();
@@ -100,11 +115,8 @@ void HttpData::handleRead() {
 
 void HttpData::reset() {
     _request.Init();
-    if (_timer.lock()) {
-        std::shared_ptr<TimerNode> my_timer(_timer.lock());
-        my_timer->clearReq();
-        _timer.reset();
-    }
+    _finished = false;
+    seperateTimer();
 }
 
 void HttpData::handleWrite() {
@@ -125,20 +137,20 @@ void HttpData::handleConn() {
     if (!_error && _connectionState == H_CONNECTED) {
         if (events != 0) {
             int timeout = DEFAULT_EXPIRED_TIME;
-            if (_request.isKeepAlive()) timeout = DEFAULT_KEEP_ALIVE_TIME;
+            if (_keepAlive) timeout = DEFAULT_KEEP_ALIVE_TIME;
             if ((events & EPOLLIN) && (events & EPOLLOUT)) {
                 events = __uint32_t(0);
                 events |= EPOLLOUT;
             }
             events |= EPOLLET;
             _loop->updatePoller(_channel, timeout);
-        } else if (_request.isKeepAlive()) {
+        } else if (_keepAlive) {
             events |= (EPOLLIN | EPOLLET);
             int timeout = DEFAULT_KEEP_ALIVE_TIME;
             _loop->updatePoller(_channel, timeout);
         } else {
             events |= (EPOLLIN | EPOLLET);
-            int timeout = (DEFAULT_EXPIRED_TIME >> 1);
+            int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
             _loop->updatePoller(_channel, timeout);
         }
     } else if (!_error && _connectionState == H_DISCONNECTING && (events & EPOLLOUT)) {
@@ -150,7 +162,26 @@ void HttpData::handleConn() {
 
 void HttpData::handleError(int fd, int err_num, std::string short_msg) {
     LOG_ERROR("HttpData handleError, fd : %d, ereCode : %d, msg : %s\n", fd, err_num, short_msg.c_str());
-    handleWrite();
+    // handleWrite();
+    std::string body_buff, header_buff;
+    char send_buff[4096];
+    body_buff += "<html><title>ERROR</title>";
+    body_buff += "<body bgcolor=\"ffffff\">";
+    body_buff += std::to_string(err_num) + short_msg;
+    body_buff += "<hr><em> EasyServer </em>\n</body></html>";
+
+    header_buff += "HTTP/1.1 " + std::to_string(err_num) + short_msg + "\r\n";
+    header_buff += "Content-Type: text/html\r\n";
+    header_buff += "Connection: Close\r\n";
+    header_buff += "Content-Length: " + std::to_string(body_buff.size()) + "\r\n";
+    header_buff += "Server: EasyServer\r\n";
+    ;
+    header_buff += "\r\n";
+    // 错误处理不考虑writen不完的情况
+    sprintf(send_buff, "%s", header_buff.c_str());
+    writen(fd, send_buff, strlen(send_buff));
+    sprintf(send_buff, "%s", body_buff.c_str());
+    writen(fd, send_buff, strlen(send_buff));
 }
 
 void HttpData::handleClose() {
@@ -159,7 +190,6 @@ void HttpData::handleClose() {
     _connectionState = H_DISCONNECTED;
     std::shared_ptr<HttpData> guard(shared_from_this());
     _loop->removeFromPoller(_channel);
-    
 }
 
 void HttpData::newEvent() {
