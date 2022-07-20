@@ -212,7 +212,7 @@ Requests: 11213 susceed, 0 failed.
 
 附测试时服务器负载情况：
 
-![](/Users/easyz/Workspace/2022Autumn/EasyServer/docs/docResource/load.jpg)
+![](../docResource/load.jpg)
 
 测试结果由于性能限制，仅供参考。
 
