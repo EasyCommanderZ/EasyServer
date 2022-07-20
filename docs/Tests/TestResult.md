@@ -191,30 +191,29 @@ TEST PAGE
 
 EasyServer 的运行参数设置为8个工作线程，开启异步日志。
 
-使用的测试工具为 WebBench，由于性能限制，并发连接总数设置为 8000，连接时间设置为 10s。测试运行命令如下：
+使用的测试工具为 WebBench，由于性能限制，并发连接总数设置为 8000，连接时间设置为 5s。测试运行命令如下：
 
 ```
-webbench -c 8000 -t 10 http://127.0.0.1:1316/index.html
+webbench -c 8000 -t 5 http://127.0.0.1:1316/index.html
 ```
 
 测试结果如下：
 
 ```
+./webbench -c 8000 -t 5 http://127.0.0.1:1316/
 Webbench - Simple Web Benchmark 1.5
 Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
 
 Benchmarking: GET http://127.0.0.1:1316/
-8000 clients, running 10 sec.
+8000 clients, running 5 sec.
 
-Speed=67278 pages/min, 383397 bytes/sec.
-Requests: 11213 susceed, 0 failed.
+Speed=1411620 pages/min, 5599473 bytes/sec.
+Requests: 117635 susceed, 0 failed.
 ```
 
-附测试时服务器负载情况：
+可知在测试机上 EasyServer 的 QPS 可以达到 20000+。
 
-![](../docResource/load.jpg)
-
-测试结果由于性能限制，仅供参考。
+测试结果仅供参考。
 
 ---
 
