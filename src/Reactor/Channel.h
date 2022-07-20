@@ -63,7 +63,7 @@ public:
         _readHandler = readHandler;
     }
 
-    void setWriteHandle(CallBack &&writeHandler) {
+    void setWriteHandler(CallBack &&writeHandler) {
         _writeHandler = writeHandler;
     }
 

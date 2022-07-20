@@ -1,134 +1,117 @@
 #ifndef __SRC_HTTP_HTTPDATA_H_
 #define __SRC_HTTP_HTTPDATA_H_
-
+#include <atomic>
+#pragma once
+#include <sys/epoll.h>
+#include <unistd.h>
+#include <functional>
+#include <map>
 #include <memory>
-#include <mutex>
 #include <string>
-#include <unistd.h>
 #include <unordered_map>
-// #include "../Http/HttpRequest.h"
-// #include "../Http/HttpResponse.h"
-#include <unordered_set>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include "../Reactor/Timer.h"
 
 class EventLoop;
-class Channel;
 class TimerNode;
+class Channel;
+
+enum ProcessState {
+    STATE_PARSE_URI = 1,
+    STATE_PARSE_HEADERS,
+    STATE_RECV_BODY,
+    STATE_ANALYSIS,
+    STATE_FINISH
+};
+
+enum URIState {
+    PARSE_URI_AGAIN = 1,
+    PARSE_URI_ERROR,
+    PARSE_URI_SUCCESS,
+};
+
+enum HeaderState {
+    PARSE_HEADER_SUCCESS = 1,
+    PARSE_HEADER_AGAIN,
+    PARSE_HEADER_ERROR
+};
+
+enum AnalysisState { ANALYSIS_SUCCESS = 1,
+                     ANALYSIS_ERROR };
+
+enum ParseState {
+    H_START = 0,
+    H_KEY,
+    H_COLON,
+    H_SPACES_AFTER_COLON,
+    H_VALUE,
+    H_CR,
+    H_LF,
+    H_END_CR,
+    H_END_LF
+};
+
+enum ConnectionState { H_CONNECTED = 0,
+                       H_DISCONNECTING,
+                       H_DISCONNECTED };
+
+enum HttpMethod { METHOD_POST = 1,
+                  METHOD_GET,
+                  METHOD_HEAD };
+
+enum HttpVersion { HTTP_10 = 1,
+                   HTTP_11 };
 
 class HttpData : public std::enable_shared_from_this<HttpData> {
 public:
-    enum ConnectionState { H_CONNECTED = 0,
-                           H_DISCONNECTING,
-                           H_DISCONNECTED };
-    using SP_Channel = std::shared_ptr<Channel>;
-
-    static const char *_srcDir;
-    static std::atomic<int> userCount;
-
-    // HttpData(SP_Channel channel, int connfd);
     HttpData(EventLoop *loop, int connfd);
     ~HttpData() {
-        UnmapFile();
-        close(_fd);
-    };
+        close(fd_);
+    }
     void reset();
-
     void seperateTimer();
     void linkTimer(std::shared_ptr<TimerNode> mtimer) {
-        _timer = mtimer;
+        // shared_ptr重载了bool, 但weak_ptr没有
+        timer_ = mtimer;
     }
-    SP_Channel getChannel() {
-        return _channel;
-    };
+    std::shared_ptr<Channel> getChannel() {
+        return channel_;
+    }
+    EventLoop *getLoop() {
+        return loop_;
+    }
     void handleClose();
     void newEvent();
+    static std::atomic_int userCount;
 
 private:
-    EventLoop *_loop;
-    SP_Channel _channel;
-    int _fd;
+    EventLoop *loop_;
+    std::shared_ptr<Channel> channel_;
+    int fd_;
+    std::string inBuffer_;
+    std::string outBuffer_;
+    bool error_;
+    ConnectionState connectionState_;
 
-    // HttpRequest _request;
-    //-------------------------------------------
-    enum PARSE_STATE {
-        REQUEST_LINE,
-        HEADERS,
-        BODY,
-        FINISH,
-    };
-
-    enum HTTP_CODE {
-        NO_REQUEST = 0,
-        GET_REQUEST,
-        BAD_REQUEST,
-        NO_RESOURSE,
-        FORBIDDENT_REQUEST,
-        FILE_REQUEST,
-        INTERNAL_ERROR,
-        CLOSED_CONNECTION,
-    };
-    PARSE_STATE _parseState;
-    std::string _method, _path, _version, _body;
-    std::unordered_map<std::string, std::string> _header;
-    std::unordered_map<std::string, std::string> _post;
-    static const std::unordered_set<std::string> DEFAULT_HTML;
-    static const std::unordered_map<std::string, int> DEFAULT_HTML_TAG;
-    static int ConverHex(char ch);
-    bool ParseRequestLine(const std::string &line);
-    void ParseHeader(const std::string &line);
-    void ParseBody(const std::string &line);
-    void ParsePath();
-    void ParsePost();
-    void ParseFromUrlencoded();
-    
-    void initRequest();
-    bool parse(std::string &buff);
-    //-------------------------------------------
-
-    //HttpResponse _response;
-    int _code;
-    char *_mmFile;
-    struct stat _mmFileStat;
-
-    static const std::unordered_map<std::string, std::string> SUFFIX_TYPE;
-    static const std::unordered_map<int, std::string> CODE_STATUS;
-    static const std::unordered_map<int, std::string> CODE_PATH;
-
-    void AddStateLine(std::string &buff);
-    void AddHeader(std::string &buff);
-    void AddContent(std::string &buff);
-
-    void ErrorHtml();
-    std::string GetFileType();
-
-    void MakeResponse(std::string& buff);
-    void handleErrorResponse(std::string& buff);
-    void UnmapFile();
-    char *File();
-    size_t FileLen() const;
-    void ErrorContent(std::string& buff, std::string messages);
-
-    //-------------------------------------------
-    // Buffer _inBuffer;
-    // Buffer _outBuffer;
-    std::string _inBuffer;
-    std::string _outBuffer;
-    bool _isClose;
-    bool _error;
-    ConnectionState _connectionState;
-    bool _keepAlive;
-    bool _finished;
-
-    std::weak_ptr<TimerNode> _timer;
+    HttpMethod method_;
+    HttpVersion HTTPVersion_;
+    std::string fileName_;
+    std::string path_;
+    int nowReadPos_;
+    ProcessState state_;
+    ParseState hState_;
+    bool keepAlive_;
+    std::map<std::string, std::string> headers_;
+    std::weak_ptr<TimerNode> timer_;
 
     void handleRead();
     void handleWrite();
     void handleConn();
     void handleError(int fd, int err_num, std::string short_msg);
-};
+    URIState parseURI();
+    HeaderState parseHeaders();
+    AnalysisState analysisRequest();
 
+    static std::unordered_map<std::string, std::string> SUFFIX_TYPE;
+};
 
 #endif /* __SRC_HTTP_HTTPDATA_H_ */

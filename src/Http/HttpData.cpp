@@ -1,376 +1,21 @@
-#include <algorithm>
-#include <atomic>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <sys/types.h>
-#include <unordered_map>
-// #include "HttpRequest.h"
-// #include "HttpResponse.h"
+// @Author Lin Ya
+// @Email xxbbb@vip.qq.com
 #include "HttpData.h"
-#include "../Log/Logger.h"
+#include <cstring>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <iostream>
 #include "../Reactor/Channel.h"
 #include "../Reactor/EventLoop.h"
 #include "../Util/sockUtil.h"
-#include <sys/epoll.h>
-#include <cassert>
-#include <regex>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <ctime>
+#include <unordered_map>
+#include "../Log/Logger.h"
 
-const __uint32_t DEFAULT_EVENT = EPOLLIN | EPOLLET | EPOLLONESHOT;
-const int DEFAULT_EXPIRED_TIME = 2000;             // ms
-const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000; // ms
+using namespace std;
 
-const char *HttpData::_srcDir = "";
-std::atomic<int> HttpData::userCount = 0;
-// static const char* _srcDir = "";
-// static std::atomic<int> userCount = 0;
-
-HttpData::HttpData(EventLoop *loop, int connfd) :
-    _loop(loop),
-    _channel(new Channel(loop, connfd)),
-    _fd(connfd),
-    _isClose(false),
-    _connectionState(H_CONNECTED),
-    _error(false),
-    _keepAlive(false),
-    _finished(false) {
-    _channel->setReadHandler([this] { handleRead(); });
-    _channel->setWriteHandle([this] { handleWrite(); });
-    _channel->setConnHandler([this] { handleConn(); });
-    initRequest();
-    if (_mmFile) {
-        UnmapFile();
-    }
-    _code = -1;
-    _mmFile = nullptr;
-    _mmFileStat = {0};
-}
-
-void HttpData::seperateTimer() {
-    if (_timer.lock()) {
-        std::shared_ptr<TimerNode> t(_timer.lock());
-        t->clearReq();
-        _timer.reset();
-    }
-}
-
-void HttpData::handleRead() {
-    __uint32_t &events = _channel->getEvents();
-    do {
-        bool zero = false;
-        int read_num = readn(_fd, _inBuffer, zero);
-        LOG_TRACE("Request inBuffer : %s\n", _inBuffer.c_str());
-        if (_connectionState == H_DISCONNECTING) {
-            _inBuffer.clear();
-            break;
-        }
-        if (read_num < 0) {
-            perror("read_num < 0");
-            _error = true;
-            handleError(_fd, 400, "Bad Request : can't read");
-            break;
-        } else if (zero) {
-            // 有请求出现但是读不到数据，可能是Request
-            // Aborted，或者来自网络的数据没有达到等原因
-            // 最可能是对端已经关闭了，统一按照对端已经关闭处理
-            // error_ = true;
-            _connectionState = H_DISCONNECTING;
-            if (read_num == 0) break;
-        }
-
-        bool parseSuccess = parse(_inBuffer);
-        _inBuffer.clear();
-        if (!parseSuccess) {
-            _error = true;
-            handleError(_fd, 400, "Bad Request : parse request error");
-            break;
-        }
-        
-        // _keepAlive = _request.isKeepAlive();
-        // _response.Init(_srcDir, _path, _keepAlive, 200);
-        MakeResponse(_outBuffer);
-        _finished = true;
-
-    } while (false); // ET read 在 readn 中实现
-
-    if (!_error) {
-        if (_outBuffer.size() > 0) {
-            handleWrite();
-            _connectionState = H_DISCONNECTING;
-        }
-        // state of _error may change in handleWrite()
-        // if (!_error && _request.GetParseState() == _request.FINISH) {
-        if (!_error && _finished) {
-            this->reset();
-            if (_inBuffer.size() > 0) {
-                if (_connectionState != H_DISCONNECTING) handleRead();
-            }
-        } else if (!_error && _connectionState != H_DISCONNECTED) {
-            events |= EPOLLIN;
-        }
-    }
-}
-
-void HttpData::reset() {
-    initRequest();
-    _finished = false;
-    seperateTimer();
-}
-
-void HttpData::handleWrite() {
-    if (!_error && _connectionState != H_DISCONNECTED) {
-        __uint32_t &events = _channel->getEvents();
-        if (writen(_fd, _outBuffer) < 0) {
-            perror("writen error");
-            events = 0;
-            _error = true;
-        }
-        if (_outBuffer.size() > 0) events |= EPOLLOUT;
-    }
-}
-
-void HttpData::handleConn() {
-    seperateTimer();
-    __uint32_t &events = _channel->getEvents();
-    if (!_error && _connectionState == H_CONNECTED) {
-        if (events != 0) {
-            int timeout = DEFAULT_EXPIRED_TIME;
-            if (_keepAlive) timeout = DEFAULT_KEEP_ALIVE_TIME;
-            if ((events & EPOLLIN) && (events & EPOLLOUT)) {
-                events = __uint32_t(0);
-                events |= EPOLLOUT;
-            }
-            events |= EPOLLET;
-            _loop->updatePoller(_channel, timeout);
-        } else if (_keepAlive) {
-            events |= (EPOLLIN | EPOLLET);
-            int timeout = DEFAULT_KEEP_ALIVE_TIME;
-            _loop->updatePoller(_channel, timeout);
-        } else {
-            events |= (EPOLLIN | EPOLLET);
-            int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
-            _loop->updatePoller(_channel, timeout);
-        }
-    } else if (!_error && _connectionState == H_DISCONNECTING && (events & EPOLLOUT)) {
-        events = (EPOLLOUT | EPOLLET);
-    } else {
-        _loop->runInLoop([capture = shared_from_this()] { capture->handleClose(); });
-    }
-}
-
-void HttpData::handleError(int fd, int err_num, std::string short_msg) {
-    LOG_ERROR("HttpData handleError, fd : %d, ereCode : %d, msg : %s\n", fd, err_num, short_msg.c_str());
-    // handleWrite();
-    std::string body_buff, header_buff;
-    char send_buff[4096];
-    body_buff += "<html><title>ERROR</title>";
-    body_buff += "<body bgcolor=\"ffffff\">";
-    body_buff += std::to_string(err_num) + " " +short_msg;
-    body_buff += "<hr><em> EasyServer </em>\n</body></html>";
-
-    header_buff += "HTTP/1.1 " + std::to_string(err_num) + short_msg + "\r\n";
-    header_buff += "Content-Type: text/html\r\n";
-    header_buff += "Connection: Close\r\n";
-    header_buff += "Content-Length: " + std::to_string(body_buff.size()) + "\r\n";
-    header_buff += "Server: EasyServer\r\n";
-    ;
-    header_buff += "\r\n";
-    // 错误处理不考虑writen不完的情况
-    sprintf(send_buff, "%s", header_buff.c_str());
-    writen(fd, send_buff, strlen(send_buff));
-    sprintf(send_buff, "%s", body_buff.c_str());
-    writen(fd, send_buff, strlen(send_buff));
-}
-
-void HttpData::handleClose() {
-    HttpData::userCount--;
-    LOG_INFO("Connection %d close, userCount : [%d]\n", _fd, static_cast<int>(HttpData::userCount));
-    _connectionState = H_DISCONNECTED;
-    std::shared_ptr<HttpData> guard(shared_from_this());
-    _loop->removeFromPoller(_channel);
-}
-
-void HttpData::newEvent() {
-    _channel->setEvents(DEFAULT_EVENT);
-    _loop->addToPoller(_channel, DEFAULT_EXPIRED_TIME);
-}
-
-// reconstruct HttpData into one class
-// --------------------------------------
-const std::unordered_set<std::string> HttpData::DEFAULT_HTML{
-    "/index",
-    "/welcome",
-    "/video",
-    "/picture",
-    "/register",
-    "/login",
-};
-
-const std::unordered_map<std::string, int> HttpData::DEFAULT_HTML_TAG{
-    {"/register.html", 0},
-    {"/login.html", 1},
-};
-
-void HttpData::initRequest() {
-    _method = _path = _version = _body = "";
-    _parseState = REQUEST_LINE;
-    _header.clear();
-    _post.clear();
-}
-
-bool HttpData::ParseRequestLine(const std::string &line) {
-    std::regex pattern("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
-    std::smatch subMatch;
-    if (std::regex_match(line, subMatch, pattern)) {
-        _method = subMatch[1];
-        _path = subMatch[2];
-        _version = subMatch[3];
-        _parseState = HEADERS;
-        return true;
-    }
-    LOG_ERROR("RequstLine Error\n", 0);
-    return false;
-}
-
-void HttpData::ParsePath() {
-    if (_path == "/") {
-        _path = "/index.html";
-    } else {
-        for (auto &item : DEFAULT_HTML) {
-            if (item == _path) {
-                _path += ".html";
-                break;
-            }
-        }
-    }
-}
-
-void HttpData::ParseHeader(const std::string &line) {
-    std::regex patten("([\\w-]+): (.*)");
-    std::smatch subMatch;
-    if (regex_match(line, subMatch, patten)) {
-        _header[subMatch[1]] = subMatch[2];
-    } else {
-        _parseState = BODY;
-    }
-}
-
-void HttpData::ParseFromUrlencoded() {
-    if (_body.size() == 0) return;
-    std::string key, value;
-    int num = 0, n = _body.size();
-    int i = 0, j = 0;
-
-    for (; i < n; i++) {
-        char ch = _body[i];
-        switch (ch) {
-        case '=':
-            key = _body.substr(j, i - j);
-            j = i + 1;
-            break;
-        case '+':
-            _body[i] = ' ';
-            break;
-        case '%':
-            num = ConverHex(_body[i + 1]) * 16 + ConverHex(_body[i + 2]);
-            _body[i + 2] = num % 10 + '0';
-            _body[i + 1] = num / 10 + '0';
-            i += 2;
-            break;
-        case '&':
-            value = _body.substr(j, i - j);
-            j = i + 1;
-            _post[key] = value;
-            LOG_TRACE("%s = %s \n", key.c_str(), value.c_str());
-            break;
-        default:
-            break;
-        }
-    }
-    assert(j <= i);
-    if (_post.count(key) == 0 && j < i) {
-        value = _body.substr(j, i - j);
-        _post[key] = value;
-    }
-}
-
-// Add more post pages;
-void HttpData::ParsePost() {
-    if (_method == "POST" && _header["Content-Type"] == "applicaton/x-www-form-urlencoded'") {
-        LOG_TRACE("Post method, path : %s\n", _path.c_str());
-        ParseFromUrlencoded();
-        // if (DEFAULT_HTML_TAG.count(_path)) {
-        //     int tag = DEFAULT_HTML_TAG.find(_path) -> second;
-        //     switch (tag) {
-
-        //     }
-        // }
-    }
-}
-
-void HttpData::ParseBody(const std::string &line) {
-    _body = line;
-    ParsePost();
-    _parseState = FINISH;
-    LOG_TRACE("Body:%s, len:%d\n", line.c_str(), line.size());
-}
-
-bool HttpData::parse(std::string &buff) {
-    const char CRLF[] = "\r\n";
-    if (buff.empty()) return false;
-    auto cur = buff.begin();
-    while (cur != buff.end() && _parseState != FINISH) {
-        auto lineEnd = std::search(cur, buff.end(), CRLF, CRLF + 2);
-        std::string line(cur, lineEnd);
-        cur = lineEnd + 2;
-        switch (_parseState) {
-        case REQUEST_LINE:
-            if (!ParseRequestLine(line)) {
-                return false;
-            }
-            ParsePath();
-            break;
-        case HEADERS:
-            ParseHeader(line);
-            if (buff.end() - cur <= 3) {
-                _parseState = FINISH;
-            }
-            break;
-        case BODY:
-            ParseBody(line);
-            break;
-        default: break;
-        }
-        if (lineEnd == buff.end()) break;
-        // buff.RetrieveUntil(lineEnd + 2);
-        // buff.clear();
-    }
-    if (_header.count("Connection") == 1) {
-        _keepAlive = ( _header.find("Connection")->second == "keep-alive" && _version == "1.1");
-    }
-    LOG_TRACE("[%s], [%s], [%s] \n", _method.c_str(), _path.c_str(), _version.c_str());
-    return true;
-}
-
-int HttpData::ConverHex(char ch) {
-    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
-    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
-    return ch;
-}
-
-// --------------------------------------
-
-// reconstruct httpresponse
-// --------------------------------------
-const std::unordered_map<std::string, std::string> HttpData::SUFFIX_TYPE = {
+unordered_map<string, string> HttpData::SUFFIX_TYPE = {
     {".html", "text/html"},
     {".xml", "text/xml"},
     {".xhtml", "application/xhtml+xml"},
@@ -390,138 +35,464 @@ const std::unordered_map<std::string, std::string> HttpData::SUFFIX_TYPE = {
     {".tar", "application/x-tar"},
     {".css", "text/css "},
     {".js", "text/javascript "},
+    {"default", "text/html"},
 };
 
-const std::unordered_map<int, std::string> HttpData::CODE_STATUS = {
-    {200, "OK"},
-    {400, "Bad Request"},
-    {403, "Forbidden"},
-    {404, "Not Found"},
-};
+atomic_int HttpData::userCount = 0;
 
-const std::unordered_map<int, std::string> HttpData::CODE_PATH = {
-    {400, "/400.html"},
-    {403, "/403.html"},
-    {404, "/404.html"},
-};
+const __uint32_t DEFAULT_EVENT = EPOLLIN | EPOLLET | EPOLLONESHOT;
+const int DEFAULT_EXPIRED_TIME = 2000;             // ms
+const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60 * 1000; // ms
 
-char *HttpData::File() {
-    return _mmFile;
+HttpData::HttpData(EventLoop *loop, int connfd) :
+    loop_(loop),
+    channel_(new Channel(loop, connfd)),
+    fd_(connfd),
+    error_(false),
+    connectionState_(H_CONNECTED),
+    method_(METHOD_GET),
+    HTTPVersion_(HTTP_11),
+    nowReadPos_(0),
+    state_(STATE_PARSE_URI),
+    hState_(H_START),
+    keepAlive_(false) {
+    // loop_->queueInLoop(bind(&HttpData::setHandlers, this));
+    channel_->setReadHandler([this] { handleRead(); });
+    channel_->setWriteHandler([this] { handleWrite(); });
+    channel_->setConnHandler([this] { handleConn(); });
 }
 
-size_t HttpData::FileLen() const {
-    return _mmFileStat.st_size;
+void HttpData::reset() {
+    // inBuffer_.clear();
+    fileName_.clear();
+    path_.clear();
+    nowReadPos_ = 0;
+    state_ = STATE_PARSE_URI;
+    hState_ = H_START;
+    headers_.clear();
+    // keepAlive_ = false;
+    seperateTimer();
 }
 
-void HttpData::ErrorHtml() {
-    if (CODE_PATH.count(_code) == 1) {
-        _path = CODE_PATH.find(_code)->second;
-        stat((_srcDir + _path).data(), &_mmFileStat);
+void HttpData::seperateTimer() {
+    if (timer_.lock()) {
+        shared_ptr<TimerNode> my_timer(timer_.lock());
+        my_timer->clearReq();
+        timer_.reset();
     }
 }
 
-void HttpData::AddStateLine(std::string &buff) {
-    std::string status;
-    if (CODE_STATUS.count(_code) == 1) {
-        status = CODE_STATUS.find(_code)->second;
+void HttpData::handleRead() {
+    __uint32_t &events_ = channel_->getEvents();
+    do {
+        bool zero = false;
+        int read_num = readn(fd_, inBuffer_, zero);
+        LOG_TRACE("Reqeust: %s\n", inBuffer_.c_str());
+        if (connectionState_ == H_DISCONNECTING) {
+            inBuffer_.clear();
+            break;
+        }
+
+        if (read_num < 0) {
+            perror("1");
+            error_ = true;
+            handleError(fd_, 400, "Bad Request");
+            break;
+        }
+
+        else if (zero) {
+            // 有请求出现但是读不到数据，可能是Request
+            // Aborted，或者来自网络的数据没有达到等原因
+            // 最可能是对端已经关闭了，统一按照对端已经关闭处理
+            // error_ = true;
+            connectionState_ = H_DISCONNECTING;
+            if (read_num == 0) {
+                // error_ = true;
+                break;
+            }
+            // cout << "readnum == 0" << endl;
+        }
+
+        if (state_ == STATE_PARSE_URI) {
+            URIState flag = this->parseURI();
+            if (flag == PARSE_URI_AGAIN)
+                break;
+            else if (flag == PARSE_URI_ERROR) {
+                perror("2");
+                inBuffer_.clear();
+                error_ = true;
+                handleError(fd_, 400, "Bad Request");
+                break;
+            } else
+                state_ = STATE_PARSE_HEADERS;
+        }
+        if (state_ == STATE_PARSE_HEADERS) {
+            HeaderState flag = this->parseHeaders();
+            if (flag == PARSE_HEADER_AGAIN)
+                break;
+            else if (flag == PARSE_HEADER_ERROR) {
+                perror("3");
+                error_ = true;
+                handleError(fd_, 400, "Bad Request");
+                break;
+            }
+            if (method_ == METHOD_POST) {
+                // POST方法准备
+                state_ = STATE_RECV_BODY;
+            } else {
+                state_ = STATE_ANALYSIS;
+            }
+        }
+        if (state_ == STATE_RECV_BODY) {
+            int content_length = -1;
+            if (headers_.find("Content-length") != headers_.end()) {
+                content_length = stoi(headers_["Content-length"]);
+            } else {
+                // cout << "(state_ == STATE_RECV_BODY)" << endl;
+                error_ = true;
+                handleError(fd_, 400, "Bad Request: Lack of argument (Content-length)");
+                break;
+            }
+            if (static_cast<int>(inBuffer_.size()) < content_length) break;
+            state_ = STATE_ANALYSIS;
+        }
+        if (state_ == STATE_ANALYSIS) {
+            AnalysisState flag = this->analysisRequest();
+            if (flag == ANALYSIS_SUCCESS) {
+                state_ = STATE_FINISH;
+                break;
+            } else {
+                // cout << "state_ == STATE_ANALYSIS" << endl;
+                error_ = true;
+                break;
+            }
+        }
+    } while (false);
+    // cout << "state_=" << state_ << endl;
+    if (!error_) {
+        if (outBuffer_.size() > 0) {
+            handleWrite();
+            // events_ |= EPOLLOUT;
+        }
+        // error_ may change
+        if (!error_ && state_ == STATE_FINISH) {
+            this->reset();
+            if (inBuffer_.size() > 0) {
+                if (connectionState_ != H_DISCONNECTING) handleRead();
+            }
+
+            // if ((keepAlive_ || inBuffer_.size() > 0) && connectionState_ ==
+            // H_CONNECTED)
+            // {
+            //     this->reset();
+            //     events_ |= EPOLLIN;
+            // }
+        } else if (!error_ && connectionState_ != H_DISCONNECTED)
+            events_ |= EPOLLIN;
+    }
+}
+
+void HttpData::handleWrite() {
+    if (!error_ && connectionState_ != H_DISCONNECTED) {
+        __uint32_t &events_ = channel_->getEvents();
+        if (writen(fd_, outBuffer_) < 0) {
+            perror("writen");
+            events_ = 0;
+            error_ = true;
+        }
+        if (outBuffer_.size() > 0) events_ |= EPOLLOUT;
+    }
+}
+
+void HttpData::handleConn() {
+    seperateTimer();
+    __uint32_t &events_ = channel_->getEvents();
+    if (!error_ && connectionState_ == H_CONNECTED) {
+        if (events_ != 0) {
+            int timeout = DEFAULT_EXPIRED_TIME;
+            if (keepAlive_) timeout = DEFAULT_KEEP_ALIVE_TIME;
+            if ((events_ & EPOLLIN) && (events_ & EPOLLOUT)) {
+                events_ = __uint32_t(0);
+                events_ |= EPOLLOUT;
+            }
+            events_ |= EPOLLET;
+            loop_->updatePoller(channel_, timeout);
+
+        } else if (keepAlive_) {
+            events_ |= (EPOLLIN | EPOLLET);
+            int timeout = DEFAULT_KEEP_ALIVE_TIME;
+            loop_->updatePoller(channel_, timeout);
+        } else {
+            events_ |= (EPOLLIN | EPOLLET);
+            int timeout = (DEFAULT_KEEP_ALIVE_TIME >> 1);
+            loop_->updatePoller(channel_, timeout);
+        }
+    } else if (!error_ && connectionState_ == H_DISCONNECTING && (events_ & EPOLLOUT)) {
+        events_ = (EPOLLOUT | EPOLLET);
     } else {
-        _code = 400;
-        status = CODE_STATUS.find(400)->second;
+        // cout << "close with errors" << endl;
+        loop_->runInLoop([capture0 = shared_from_this()] { capture0->handleClose(); });
     }
-    buff += ("HTTP/1.1 " + std::to_string(_code) + " " + status + "\r\n");
 }
 
-void HttpData::AddHeader(std::string &buff) {
-    buff += "Connection: ";
-    if (_keepAlive) {
-        buff += "keep-alive\r\n";
-        buff += "keep-alive: timeout=" + std::to_string(DEFAULT_KEEP_ALIVE_TIME) + "\r\n";
+URIState HttpData::parseURI() {
+    string &str = inBuffer_;
+    string cop = str;
+    // 读到完整的请求行再开始解析请求
+    size_t pos = str.find('\r', nowReadPos_);
+    if (pos < 0) {
+        return PARSE_URI_AGAIN;
+    }
+    // 去掉请求行所占的空间，节省空间
+    string request_line = str.substr(0, pos);
+    if (str.size() > pos + 1)
+        str = str.substr(pos + 1);
+    else
+        str.clear();
+    // Method
+    int posGet = request_line.find("GET");
+    int posPost = request_line.find("POST");
+    int posHead = request_line.find("HEAD");
+
+    if (posGet >= 0) {
+        pos = posGet;
+        method_ = METHOD_GET;
+    } else if (posPost >= 0) {
+        pos = posPost;
+        method_ = METHOD_POST;
+    } else if (posHead >= 0) {
+        pos = posHead;
+        method_ = METHOD_HEAD;
     } else {
-        buff += "close\r\n";
-    }
-    buff += "Content-type: " + GetFileType() + "\r\n";
-    buff += "Server: EasyServer\r\n";
-}
-
-void HttpData::AddContent(std::string &buff) {
-    int srcFd = open((_srcDir + _path).data(), O_RDONLY);
-    if (srcFd < 0) {
-        _error = true;
-        _code = 404;
-        // ErrorContent(buff, "File Not Found");
-        handleError(_fd, 404, "File Not Found");
-        return;
+        return PARSE_URI_ERROR;
     }
 
-    /* 将文件映射到内存提高文件的访问速度
-        MAP_PRIVATE 建立一个写入时拷贝的私有映射*/
-    int *mmRet = (int *)mmap(0, _mmFileStat.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0);
-    close(srcFd);
-    LOG_TRACE("file path %s \n", (_srcDir + _path).data());
-    if (*mmRet == -1) {
-        _error = true;
-        // ErrorContent(buff, "File Not Found!");
-        handleError(_fd, 404, "File Not Found");
-        return;
-    }
-    _mmFile = (char *)mmRet;
-    buff += "Content-length: " + std::to_string(_mmFileStat.st_size) + "\r\n\r\n";
-    buff += std::string(_mmFile, _mmFile + _mmFileStat.st_size);
-}
-
-void HttpData::UnmapFile() {
-    if (_mmFile) {
-        munmap(_mmFile, _mmFileStat.st_size);
-        _mmFile = nullptr;
-    }
-}
-
-std::string HttpData::GetFileType() {
-    /* 判断文件类型 */
-    std::string::size_type idx = _path.find_last_of('.');
-    if (idx == std::string::npos) {
-        return "text/plain";
-    }
-    std::string suffix = _path.substr(idx);
-    if (SUFFIX_TYPE.count(suffix) == 1) {
-        return SUFFIX_TYPE.find(suffix)->second;
-    }
-    return "text/plain";
-}
-
-void HttpData::ErrorContent(std::string &buff, std::string message) {
-    std::string body;
-    std::string status;
-
-    body += "<html><title>QAQ EASY NOT EASY</title>";
-    body += "<body bgcolor=\"ffffff\">";
-    if (CODE_STATUS.count(_code) == 1) {
-        status = CODE_STATUS.find(_code)->second;
+    // filename
+    pos = request_line.find("/", pos);
+    if (pos < 0) {
+        fileName_ = "index.html";
+        HTTPVersion_ = HTTP_11;
+        return PARSE_URI_SUCCESS;
     } else {
-        status = "Bad Request";
+        size_t _pos = request_line.find(' ', pos);
+        if (_pos < 0)
+            return PARSE_URI_ERROR;
+        else {
+            if (_pos - pos > 1) {
+                fileName_ = request_line.substr(pos + 1, _pos - pos - 1);
+                size_t __pos = fileName_.find('?');
+                if (__pos >= 0) {
+                    fileName_ = fileName_.substr(0, __pos);
+                }
+            } else
+                fileName_ = "index.html";
+        }
+        pos = _pos;
     }
-    body += std::to_string(_code) + " : " + status + "\n";
-    body += "<p>" + message + "</p>";
-    body += "<hr><em>EasyServer</em>\n</body></html>";
-    buff += "Content-length: " + std::to_string(body.size()) + "\r\n\r\n";
-    buff += body;
+    // cout << "fileName_: " << fileName_ << endl;
+    // HTTP 版本号
+    pos = request_line.find("/", pos);
+    if (pos < 0)
+        return PARSE_URI_ERROR;
+    else {
+        if (request_line.size() - pos <= 3)
+            return PARSE_URI_ERROR;
+        else {
+            string ver = request_line.substr(pos + 1, 3);
+            if (ver == "1.0")
+                HTTPVersion_ = HTTP_10;
+            else if (ver == "1.1")
+                HTTPVersion_ = HTTP_11;
+            else
+                return PARSE_URI_ERROR;
+        }
+    }
+    return PARSE_URI_SUCCESS;
 }
 
-void HttpData::MakeResponse(std::string &buff) {
-
-    /* 判断请求的资源文件 */
-    if (stat((_srcDir + _path).data(), &_mmFileStat) < 0 || S_ISDIR(_mmFileStat.st_mode)) {
-        _code = 404;
-    } else if (!(_mmFileStat.st_mode & S_IROTH)) {
-        _code = 403;
-    } else if (_code == -1) {
-        _code = 200;
+HeaderState HttpData::parseHeaders() {
+    string &str = inBuffer_;
+    int key_start = -1, key_end = -1, value_start = -1, value_end = -1;
+    int now_read_line_begin = 0;
+    bool notFinish = true;
+    size_t i = 0;
+    for (; i < str.size() && notFinish; ++i) {
+        switch (hState_) {
+        case H_START: {
+            if (str[i] == '\n' || str[i] == '\r') break;
+            hState_ = H_KEY;
+            key_start = i;
+            now_read_line_begin = i;
+            break;
+        }
+        case H_KEY: {
+            if (str[i] == ':') {
+                key_end = i;
+                if (key_end - key_start <= 0) return PARSE_HEADER_ERROR;
+                hState_ = H_COLON;
+            } else if (str[i] == '\n' || str[i] == '\r')
+                return PARSE_HEADER_ERROR;
+            break;
+        }
+        case H_COLON: {
+            if (str[i] == ' ') {
+                hState_ = H_SPACES_AFTER_COLON;
+            } else
+                return PARSE_HEADER_ERROR;
+            break;
+        }
+        case H_SPACES_AFTER_COLON: {
+            hState_ = H_VALUE;
+            value_start = i;
+            break;
+        }
+        case H_VALUE: {
+            if (str[i] == '\r') {
+                hState_ = H_CR;
+                value_end = i;
+                if (value_end - value_start <= 0) return PARSE_HEADER_ERROR;
+            } else if (i - value_start > 255)
+                return PARSE_HEADER_ERROR;
+            break;
+        }
+        case H_CR: {
+            if (str[i] == '\n') {
+                hState_ = H_LF;
+                string key(str.begin() + key_start, str.begin() + key_end);
+                string value(str.begin() + value_start, str.begin() + value_end);
+                headers_[key] = value;
+                now_read_line_begin = i;
+            } else
+                return PARSE_HEADER_ERROR;
+            break;
+        }
+        case H_LF: {
+            if (str[i] == '\r') {
+                hState_ = H_END_CR;
+            } else {
+                key_start = i;
+                hState_ = H_KEY;
+            }
+            break;
+        }
+        case H_END_CR: {
+            if (str[i] == '\n') {
+                hState_ = H_END_LF;
+            } else
+                return PARSE_HEADER_ERROR;
+            break;
+        }
+        case H_END_LF: {
+            notFinish = false;
+            key_start = i;
+            now_read_line_begin = i;
+            break;
+        }
+        }
     }
-
-    ErrorHtml();
-    AddStateLine(buff);
-    AddHeader(buff);
-    AddContent(buff);
+    if (hState_ == H_END_LF) {
+        str = str.substr(i);
+        return PARSE_HEADER_SUCCESS;
+    }
+    str = str.substr(now_read_line_begin);
+    return PARSE_HEADER_AGAIN;
 }
 
-// --------------------------------------
+AnalysisState HttpData::analysisRequest() {
+    if (method_ == METHOD_POST) {
+        // add post request analysis here
+
+    } else if (method_ == METHOD_GET || method_ == METHOD_HEAD) {
+        string header;
+        header += "HTTP/1.1 200 OK\r\n";
+        if (headers_.find("Connection") != headers_.end() && (headers_["Connection"] == "Keep-Alive" || headers_["Connection"] == "keep-alive")) {
+            keepAlive_ = true;
+            header += string("Connection: Keep-Alive\r\n") + "Keep-Alive: timeout=" + to_string(DEFAULT_KEEP_ALIVE_TIME) + "\r\n";
+        }
+        int dot_pos = fileName_.find('.');
+        string filetype;
+        if (dot_pos < 0)
+            filetype = HttpData::SUFFIX_TYPE["default"];
+        else
+            filetype = HttpData::SUFFIX_TYPE[fileName_.substr(dot_pos)];
+
+        // echo test
+        if (fileName_ == "benchtest") {
+            outBuffer_ =
+                "HTTP/1.1 200 OK\r\nContent-type: text/plain\r\n\r\nHello World";
+            return ANALYSIS_SUCCESS;
+        }
+
+        struct stat sbuf;
+        if (stat(fileName_.c_str(), &sbuf) < 0) {
+            header.clear();
+            handleError(fd_, 404, "Not Found!");
+            return ANALYSIS_ERROR;
+        }
+        header += "Content-Type: " + filetype + "\r\n";
+        header += "Content-Length: " + to_string(sbuf.st_size) + "\r\n";
+        header += "Server: EasyServer\r\n";
+        // 头部结束
+        header += "\r\n";
+        outBuffer_ += header;
+
+        if (method_ == METHOD_HEAD) return ANALYSIS_SUCCESS;
+
+        int src_fd = open(fileName_.c_str(), O_RDONLY, 0);
+        if (src_fd < 0) {
+            outBuffer_.clear();
+            handleError(fd_, 404, "Not Found!");
+            return ANALYSIS_ERROR;
+        }
+        void *mmapRet = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
+        close(src_fd);
+        if (mmapRet == (void *)-1) {
+            munmap(mmapRet, sbuf.st_size);
+            outBuffer_.clear();
+            handleError(fd_, 404, "Not Found!");
+            return ANALYSIS_ERROR;
+        }
+        char *src_addr = static_cast<char *>(mmapRet);
+        outBuffer_ += string(src_addr, src_addr + sbuf.st_size);
+        ;
+        munmap(mmapRet, sbuf.st_size);
+        return ANALYSIS_SUCCESS;
+    }
+    return ANALYSIS_ERROR;
+}
+
+void HttpData::handleError(int fd, int err_num, string short_msg) {
+    short_msg = " " + short_msg;
+    char send_buff[4096];
+    string body_buff, header_buff;
+    body_buff += "<html><title>Error Page</title>";
+    body_buff += "<body bgcolor=\"ffffff\">";
+    body_buff += to_string(err_num) + short_msg;
+    body_buff += "<hr><em> EasyServer </em>\n</body></html>";
+
+    header_buff += "HTTP/1.1 " + to_string(err_num) + short_msg + "\r\n";
+    header_buff += "Content-Type: text/html\r\n";
+    header_buff += "Connection: Close\r\n";
+    header_buff += "Content-Length: " + to_string(body_buff.size()) + "\r\n";
+    header_buff += "Server: EasyServer\r\n";
+    ;
+    header_buff += "\r\n";
+    // 错误处理不考虑writen不完的情况
+    sprintf(send_buff, "%s", header_buff.c_str());
+    writen(fd, send_buff, strlen(send_buff));
+    sprintf(send_buff, "%s", body_buff.c_str());
+    writen(fd, send_buff, strlen(send_buff));
+}
+
+void HttpData::handleClose() {
+    HttpData::userCount--;
+    LOG_TRACE("Connection %d close, userCount : [%d]\n", fd_, static_cast<int>(HttpData::userCount));
+    connectionState_ = H_DISCONNECTED;
+    shared_ptr<HttpData> guard(shared_from_this());
+    loop_->removeFromPoller(channel_);
+}
+
+void HttpData::newEvent() {
+    channel_->setEvents(DEFAULT_EVENT);
+    loop_->addToPoller(channel_, DEFAULT_EXPIRED_TIME);
+}

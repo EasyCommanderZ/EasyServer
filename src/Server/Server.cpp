@@ -34,7 +34,7 @@ Server::Server(EventLoop *loop, int threadNum, int port) :
     char *srcDir = getcwd(nullptr, 256);
     assert(srcDir);
     HttpData::userCount = 0;
-    HttpData::_srcDir = srcDir;
+    // HttpData::_srcDir = srcDir;
 }
 
 void Server::start() {
