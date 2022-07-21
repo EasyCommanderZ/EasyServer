@@ -7,13 +7,25 @@ EasyServer 是使用 C++ 17 标准开发的轻量级Web服务器。
 ## 项目特点
 
 - 基于 C++ 17 标准开发，使用标准库提供的智能指针或将类按照RAII方式来设计，降低内存泄漏的可能。
-- 使用 线程池 + 非阻塞 Socket + Epoll (ET) + Reactor模式的并发模型。主线程作为 Acceptor 接受请求，并分发给其他事件处理线程。
+- 使用 线程池 + 非阻塞 Socket + Epoll (ET) + Reactor模式的并发模型。主线程作为 Acceptor 接受请求，并分发给其他事件处理线程。详情见 [并发模型](./docs/Logbook/并发模型.md)。
 - 使用基于标准库优先队列 (Priority_Queue) 实现的定时器关闭超时请求，采用惰性删除。
 - 使用 eventfd 实现了线程的异步唤醒。
 - 实现了一个简单的异步日志模块，使用链式缓冲。
 - 使用状态机解析 HTTP 请求。
 
-## 环境
+## 项目结构
+
+```
+src
+├── Http    // 提供 HTTP 中连接和读写事件的处理功能
+├── Log     // 日志模块
+├── Reactor // 事件处理模块
+├── Server  // 服务器模块，作为 Acceptor 处理连接，分发事件
+├── Thread  // 线程池、线程信息获取
+└── Util    // 工具类
+```
+
+## 开发环境
 
 仅列出我的开发环境以供参考。
 
@@ -49,9 +61,7 @@ cmake --build .
 
 测试对 EasyServer 进行了功能测试与性能测试，并使用 Valgrind 进行了内存检查。
 
-测试结果见 [TestResult](./docs/Tests/TestResult.md)
-
-更多和测试有关的文档见 [./docs/Tests](./docs/Tests)
+测试结果见 [TestResult](./docs/Tests/TestResult.md)。未来更多和测试有关的文档见 [./docs/Tests](./docs/Tests)。
 
 ## 文档
 
