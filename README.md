@@ -67,6 +67,10 @@ cmake --build .
 
 在 [docs](./docs) 中，记录了项目中模块设计与实现的一些思路、问题和细节，也有一些项目过程中的学习、感受和思考，希望对于和我一样的学习者有所帮助。
 
+## 代码量统计
+
+![codeCount](./docs/docResource/codeCount.jpg)
+
 ## 致谢
 
 参考的项目有很多，记录在 [开始Coding之前](./docs/BeforeStart.md) 的最后。非常感谢这些无私的开源作者！
