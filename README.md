@@ -35,9 +35,9 @@ src
 
 由于使用了 Epoll，目前仅能在符合工具版本条件的 Linux 环境上进行完整编译。Log 部分在 macOS上开发，即 Log 部分确保可以在符合条件的 macOS 环境上编译运行。下面列出我在 macOS 的开发环境以供参考。
 
-- OS : macOS Monterey 12.4, Apple M1
+- OS : macOS Monterey 12.4+, Apple M1
 - Compiler : Clang 13.1.6 arm64-apple-darwin 21.4.0
-- CMake : 3.23.2
+- CMake : 3.23.2+
 
 未来期望完成 EasyServer 的跨平台实现。
 
